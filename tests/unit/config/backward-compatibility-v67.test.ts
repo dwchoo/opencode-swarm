@@ -115,12 +115,20 @@ async function readAutomationStatus(tempDir: string): Promise<Record<string, unk
 
 describe('Legacy Config Compatibility', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('legacy-config');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -239,12 +247,20 @@ describe('Legacy Config Compatibility', () => {
 
 describe('Migration Behavior', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('migration');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -410,12 +426,20 @@ describe('Migration Behavior', () => {
 
 describe('CLI Workflow Compatibility', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('cli-workflow');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -558,12 +582,20 @@ describe('CLI Workflow Compatibility', () => {
 
 describe('GUI/Background Workflow Compatibility', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('gui-background');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -729,12 +761,20 @@ describe('GUI/Background Workflow Compatibility', () => {
 
 describe('Deterministic Artifacts & No Destructive Side-Effects', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('deterministic');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -920,12 +960,20 @@ describe('Deterministic Artifacts & No Destructive Side-Effects', () => {
 
 describe('Edge Cases & Error Recovery', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('edge-cases');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 
@@ -989,12 +1037,20 @@ describe('Edge Cases & Error Recovery', () => {
 
 describe('Full v6.7 Backward Compatibility Summary', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('full-summary');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		await rm(tempDir, { recursive: true, force: true });
 	});
 

@@ -48,12 +48,23 @@ function createTestConfigObj(overrides: Record<string, unknown> = {}): unknown {
 
 describe('Config Doctor Service', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+
+		// SECURITY: Keep tests isolated from real ~/.config/opencode.
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
+
 		cleanupDir(tempDir);
 	});
 
@@ -230,7 +241,7 @@ describe('Config Doctor Service', () => {
 			);
 			try {
 				// Override config paths to point within isolatedDir
-				process.env.XDG_CONFIG_HOME = path.join(isolatedDir, '.config');
+				process.env.XDG_CONFIG_HOME = isolatedDir;
 
 				const backup = createConfigBackup(isolatedDir);
 				expect(backup).toBeNull();
@@ -897,9 +908,13 @@ describe('Config Doctor Service', () => {
 	describe('getConfigPaths', () => {
 		it('should return correct config paths', () => {
 			const { userConfigPath, projectConfigPath } = getConfigPaths(tempDir);
+			const expectedUserConfigPath = path.join(
+				process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
+				'opencode',
+				'opencode-swarm.json',
+			);
 
-			expect(userConfigPath).toContain('.config');
-			expect(userConfigPath).toContain('opencode');
+			expect(userConfigPath).toBe(expectedUserConfigPath);
 			expect(projectConfigPath).toContain('.opencode');
 		});
 	});

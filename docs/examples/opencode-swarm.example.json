@@ -1,0 +1,241 @@
+{
+  "agents": {
+    "architect": {
+      "model": "anthropic/claude-sonnet-4-5",
+      "temperature": 0.6,
+      "reasoningEffort": "high"
+    },
+    "coder": {
+      "model": "anthropic/claude-sonnet-4-5",
+      "temperature": 0.35,
+      "reasoningEffort": "medium"
+    },
+    "explorer": {
+      "model": "google/gemini-2.0-flash",
+      "temperature": 0.2,
+      "reasoningEffort": "low"
+    },
+    "designer": {
+      "disabled": true
+    }
+  },
+  "swarms": {
+    "default": {
+      "name": "Primary Cloud",
+      "agents": {
+        "architect": {
+          "model": "anthropic/claude-sonnet-4-5",
+          "temperature": 0.55,
+          "reasoningEffort": "high"
+        },
+        "coder": {
+          "model": "anthropic/claude-sonnet-4-5",
+          "temperature": 0.4,
+          "reasoningEffort": "medium"
+        },
+        "explorer": {
+          "model": "google/gemini-2.0-flash",
+          "temperature": 0.2,
+          "reasoningEffort": "low"
+        },
+        "sme": {
+          "model": "google/gemini-2.0-flash",
+          "temperature": 0.2
+        },
+        "test_engineer": {
+          "model": "google/gemini-2.0-flash",
+          "temperature": 0.25
+        },
+        "reviewer": {
+          "model": "openai/gpt-4o",
+          "temperature": 0.2
+        },
+        "critic": {
+          "model": "openai/gpt-4o",
+          "temperature": 0.2
+        },
+        "docs": {
+          "model": "google/gemini-2.0-flash",
+          "temperature": 0.1
+        },
+        "designer": {
+          "model": "google/gemini-2.0-flash",
+          "temperature": 0.35
+        }
+      }
+    },
+    "local": {
+      "name": "Local Dev",
+      "agents": {
+        "architect": {
+          "model": "ollama/qwen2.5:14b",
+          "temperature": 0.6
+        },
+        "coder": {
+          "model": "ollama/qwen2.5-coder:14b",
+          "temperature": 0.35
+        },
+        "explorer": {
+          "model": "ollama/gemma2:9b",
+          "temperature": 0.25
+        },
+        "sme": {
+          "model": "ollama/gemma2:9b",
+          "temperature": 0.25
+        },
+        "test_engineer": {
+          "disabled": true
+        },
+        "reviewer": {
+          "model": "ollama/llama3.1:8b",
+          "temperature": 0.3
+        },
+        "critic": {
+          "model": "ollama/llama3.1:8b",
+          "temperature": 0.3
+        },
+        "docs": {
+          "disabled": true
+        },
+        "designer": {
+          "model": "ollama/llama3.2:8b",
+          "temperature": 0.4
+        }
+      }
+    }
+  },
+  "hooks": {
+    "system_enhancer": true,
+    "compaction": true,
+    "agent_activity": true,
+    "delegation_tracker": true,
+    "agent_awareness_max_chars": 600,
+    "delegation_gate": true,
+    "delegation_max_chars": 6000
+  },
+  "context_budget": {
+    "enabled": true,
+    "warn_threshold": 0.7,
+    "critical_threshold": 0.9,
+    "model_limits": {
+      "default": 128000,
+      "anthropic/claude-sonnet-4-5": 128000,
+      "google/gemini-2.0-flash": 32000,
+      "openai/gpt-4o": 128000,
+      "ollama/qwen2.5:14b": 16000,
+      "ollama/qwen2.5-coder:14b": 16000
+    },
+    "max_injection_tokens": 3800,
+    "scoring": {
+      "enabled": true,
+      "max_candidates": 80,
+      "weights": {
+        "phase": 1,
+        "current_task": 2.2,
+        "blocked_task": 1.3,
+        "recent_failure": 2.2,
+        "recent_success": 0.6,
+        "evidence_presence": 1.1,
+        "decision_recency": 1.4,
+        "dependency_proximity": 1.0
+      },
+      "decision_decay": {
+        "mode": "linear",
+        "half_life_hours": 30
+      },
+      "token_ratios": {
+        "prose": 0.25,
+        "code": 0.4,
+        "markdown": 0.3,
+        "json": 0.35
+      }
+    }
+  },
+  "guardrails": {
+    "enabled": true,
+    "max_tool_calls": 260,
+    "max_duration_minutes": 40,
+    "max_repetitions": 12,
+    "max_consecutive_errors": 6,
+    "warning_threshold": 0.72,
+    "idle_timeout_minutes": 75,
+    "profiles": {
+      "coder": {
+        "max_tool_calls": 420,
+        "max_duration_minutes": 60
+      },
+      "explorer": {
+        "max_tool_calls": 140,
+        "max_duration_minutes": 20
+      },
+      "designer": {
+        "max_tool_calls": 150,
+        "max_duration_minutes": 25
+      }
+    }
+  },
+  "evidence": {
+    "enabled": true,
+    "max_age_days": 90,
+    "max_bundles": 1200,
+    "auto_archive": false
+  },
+  "summaries": {
+    "enabled": true,
+    "threshold_bytes": 24576,
+    "max_summary_chars": 1400,
+    "max_stored_bytes": 15728640,
+    "retention_days": 10
+  },
+  "review_passes": {
+    "always_security_review": false,
+    "security_globs": [
+      "**/auth/**",
+      "**/api/**",
+      "**/crypto/**",
+      "**/security/**",
+      "**/middleware/**",
+      "**/session/**",
+      "**/token/**",
+      "**/payment/**"
+    ]
+  },
+  "ui_review": {
+    "enabled": true,
+    "trigger_paths": [
+      "**/pages/**",
+      "**/components/**",
+      "**/views/**",
+      "**/screens/**",
+      "**/ui/**",
+      "**/layouts/**"
+    ],
+    "trigger_keywords": [
+      "new page",
+      "new component",
+      "redesign",
+      "layout change",
+      "form",
+      "modal",
+      "dashboard",
+      "landing page",
+      "login form",
+      "settings"
+    ]
+  },
+  "checkpoint": {
+    "enabled": true,
+    "auto_checkpoint_threshold": 3
+  },
+  "automation": {
+    "mode": "hybrid",
+    "capabilities": {
+      "plan_sync": true,
+      "phase_preflight": false,
+      "config_doctor_on_startup": false,
+      "config_doctor_autofix": false,
+      "evidence_auto_summaries": true,
+      "decision_drift_detection": true
+    }
+  }
+}

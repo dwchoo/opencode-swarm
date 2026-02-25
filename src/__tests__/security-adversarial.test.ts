@@ -17,13 +17,26 @@ import {
 
 // Test temp directory
 let testDir: string;
+let originalXDG: string | undefined;
 
 beforeEach(() => {
 	// Create temp directory for config files
 	testDir = fs.mkdtempSync(path.join(tmpdir(), 'security-test-'));
+
+	// SECURITY: Never touch real ~/.config during tests.
+	// Isolate XDG_CONFIG_HOME so loader reads/writes only inside tempDir.
+	originalXDG = process.env.XDG_CONFIG_HOME;
+	process.env.XDG_CONFIG_HOME = testDir;
 });
 
 afterEach(() => {
+	// Restore XDG_CONFIG_HOME first (avoid leaking env into other tests)
+	if (originalXDG === undefined) {
+		delete process.env.XDG_CONFIG_HOME;
+	} else {
+		process.env.XDG_CONFIG_HOME = originalXDG;
+	}
+
 	// Clean up temp directory
 	if (testDir && fs.existsSync(testDir)) {
 		fs.rmSync(testDir, { recursive: true, force: true });
@@ -411,7 +424,10 @@ describe('SECURITY: Fail-Secure Defaults', () => {
 
 	it('should apply fail-secure when project config is invalid', () => {
 		// Write valid user config first
-		const userConfigDir = path.join(os.homedir(), '.config', 'opencode');
+		const userConfigDir = path.join(
+			process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
+			'opencode',
+		);
 		fs.mkdirSync(userConfigDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(userConfigDir, 'opencode-swarm.json'),
@@ -425,9 +441,6 @@ describe('SECURITY: Fail-Secure Defaults', () => {
 
 		// Should use user config or defaults
 		expect(config.guardrails?.enabled).toBe(true);
-
-		// Cleanup
-		fs.rmSync(userConfigDir, { recursive: true, force: true });
 	});
 });
 

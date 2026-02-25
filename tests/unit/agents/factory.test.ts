@@ -93,6 +93,20 @@ describe('createAgents', () => {
             expect(coder?.config.temperature).toBe(0.5);
         });
 
+        it('reasoningEffort override applies correctly', () => {
+            const config = {
+                agents: {
+                    coder: {
+                        reasoningEffort: 'high'
+                    }
+                }
+            };
+
+            const agents = createAgents(config as unknown as PluginConfig);
+            const coder = agents.find(a => a.name === 'coder');
+            expect((coder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBe('high');
+        });
+
         it('disabled agent is filtered out', () => {
             const config = {
                 agents: {
@@ -171,6 +185,44 @@ describe('createAgents', () => {
             expect(cloudArchitect?.description).toContain('[Cloud]');
             expect(cloudArchitect?.config.prompt).toContain('## ⚠️ YOU ARE THE CLOUD SWARM ARCHITECT');
             expect(cloudArchitect?.config.prompt).toContain('cloud_');
+        });
+
+        it('prefixed swarm agent applies reasoningEffort override from swarms.<id>.agents', () => {
+            const config = {
+                swarms: {
+                    local: {
+                        name: 'Local',
+                        agents: {
+                            coder: {
+                                reasoningEffort: 'low'
+                            }
+                        }
+                    }
+                }
+            };
+
+            const agents = createAgents(config as unknown as PluginConfig);
+            const localCoder = agents.find(a => a.name === 'local_coder');
+            expect((localCoder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBe('low');
+        });
+
+        it('ignores top-level agents overrides when swarms is configured', () => {
+            const config = {
+                agents: {
+                    coder: {
+                        reasoningEffort: 'high'
+                    }
+                },
+                swarms: {
+                    local: {
+                        name: 'Local'
+                    }
+                }
+            };
+
+            const agents = createAgents(config as unknown as PluginConfig);
+            const localCoder = agents.find(a => a.name === 'local_coder');
+            expect((localCoder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBeUndefined();
         });
     });
 
@@ -276,6 +328,20 @@ describe('getAgentConfigs', () => {
         const coder = configs.coder;
         expect(coder.model).toBe('custom/model');
         expect(coder.temperature).toBe(0.7);
+    });
+
+    it('propagates reasoningEffort overrides in getAgentConfigs', () => {
+        const config = {
+            agents: {
+                coder: {
+                    reasoningEffort: 'high'
+                }
+            }
+        };
+
+        const configs = getAgentConfigs(config as unknown as PluginConfig);
+        const coder = configs.coder as { reasoningEffort?: string };
+        expect(coder.reasoningEffort).toBe('high');
     });
 
     it('handles disabled agents in getAgentConfigs', () => {

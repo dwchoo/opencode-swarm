@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -37,8 +37,33 @@ const mockListEvidenceTaskIds = listEvidenceTaskIds as jest.MockedFunction<
 >;
 
 let tempDir: string;
+let originalEnv: NodeJS.ProcessEnv = {};
+
+function captureEnv(): NodeJS.ProcessEnv {
+	return { ...process.env };
+}
+
+function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+	const keys = Object.keys(process.env);
+	for (const key of keys) {
+		if (!(key in snapshot)) {
+			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+			delete process.env[key];
+		}
+	}
+
+	for (const key of Object.keys(snapshot)) {
+		const value = snapshot[key];
+		if (value === undefined) {
+			delete process.env[key];
+		} else {
+			process.env[key] = value;
+		}
+	}
+}
 
 beforeEach(() => {
+	originalEnv = captureEnv();
 	tempDir = join(
 		tmpdir(),
 		`evidence-summary-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -50,7 +75,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	restoreEnv(originalEnv);
 	rmSync(tempDir, { recursive: true, force: true });
+	jest.restoreAllMocks();
+});
+
+afterAll(() => {
+	jest.restoreAllMocks();
 });
 
 function createMockPlan(overrides: Partial<Plan> = {}): Plan {

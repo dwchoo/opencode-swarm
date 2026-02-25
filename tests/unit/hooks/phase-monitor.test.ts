@@ -44,9 +44,39 @@ function createMockPlan(currentPhaseId: number, phases: Array<{
 
 describe('createPhaseMonitorHook', () => {
 	const testDirectory = '/test/project';
+	let originalEnv: NodeJS.ProcessEnv = {};
+
+	function captureEnv(): NodeJS.ProcessEnv {
+		return { ...process.env };
+	}
+
+	function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+		const keys = Object.keys(process.env);
+		for (const key of keys) {
+			if (!(key in snapshot)) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key];
+			}
+		}
+
+		for (const key of Object.keys(snapshot)) {
+			const value = snapshot[key];
+			if (value === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = value;
+			}
+		}
+	}
 
 	beforeEach(() => {
-		mockLoadPlan.mockClear();
+		originalEnv = captureEnv();
+		mockLoadPlan.mockReset();
+		mockCheckAndTrigger.mockClear();
+	});
+
+	afterEach(() => {
+		restoreEnv(originalEnv);
 		mockCheckAndTrigger.mockClear();
 	});
 

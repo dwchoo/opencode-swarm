@@ -53,12 +53,20 @@ function computeSHA256(content: string): string {
 
 describe('SECURITY: Backup Artifact Tampering', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 
@@ -245,12 +253,20 @@ describe('SECURITY: Backup Artifact Tampering', () => {
 
 describe('SECURITY: Restore Path Abuse', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 
@@ -502,12 +518,20 @@ describe('SECURITY: Restore Path Abuse', () => {
 
 describe('SECURITY: Hash Bypass Attempts', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 
@@ -679,12 +703,20 @@ describe('SECURITY: Hash Bypass Attempts', () => {
 
 describe('SECURITY: Malformed Config Doctor Artifacts', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 
@@ -893,12 +925,20 @@ describe('SECURITY: Malformed Config Doctor Artifacts', () => {
 
 describe('SECURITY: Startup Autofix Abuse', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 
@@ -1439,12 +1479,20 @@ describe('SECURITY: Startup Autofix Abuse', () => {
 
 describe('SECURITY: Combined Attack Scenarios', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(() => {
 		tempDir = createTempDir();
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(() => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		cleanupDir(tempDir);
 	});
 

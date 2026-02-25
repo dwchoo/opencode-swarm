@@ -85,12 +85,20 @@ async function readPlanMd(dir: string): Promise<string | null> {
 
 describe('ATTACK: Malformed legacy config', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('config-attack');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		if (existsSync(tempDir)) {
 			await rm(tempDir, { recursive: true, force: true });
 		}
@@ -315,12 +323,20 @@ describe('ATTACK: Malformed legacy config', () => {
 
 describe('ATTACK: Migration artifact tampering', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('migration-attack');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		if (existsSync(tempDir)) {
 			await rm(tempDir, { recursive: true, force: true });
 		}
@@ -555,12 +571,20 @@ Phase: 1 [IN PROGRESS]
 
 describe('ATTACK: Fallback behavior abuse', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('fallback-attack');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		if (existsSync(tempDir)) {
 			await rm(tempDir, { recursive: true, force: true });
 		}
@@ -731,12 +755,20 @@ describe('ATTACK: Fallback behavior abuse', () => {
 
 describe('ATTACK: Concurrent state manipulation', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('concurrent-attack');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		if (existsSync(tempDir)) {
 			await rm(tempDir, { recursive: true, force: true });
 		}
@@ -806,12 +838,20 @@ Phase: 999
 
 describe('ATTACK: Edge case exploitation', () => {
 	let tempDir: string;
+	let originalXDG: string | undefined;
 
 	beforeEach(async () => {
 		tempDir = await createTestDir('edge-attack');
+		originalXDG = process.env.XDG_CONFIG_HOME;
+		process.env.XDG_CONFIG_HOME = tempDir;
 	});
 
 	afterEach(async () => {
+		if (originalXDG === undefined) {
+			delete process.env.XDG_CONFIG_HOME;
+		} else {
+			process.env.XDG_CONFIG_HOME = originalXDG;
+		}
 		if (existsSync(tempDir)) {
 			await rm(tempDir, { recursive: true, force: true });
 		}

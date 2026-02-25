@@ -263,8 +263,8 @@ Single-model frameworks have correlated failure modes. The same model that write
 ```json
 {
   "agents": {
-    "architect": { "model": "anthropic/claude-opus-4-6" },
-    "coder": { "model": "minimax-coding-plan/MiniMax-M2.5" },
+    "architect": { "model": "anthropic/claude-opus-4-6", "reasoningEffort": "high" },
+    "coder": { "model": "minimax-coding-plan/MiniMax-M2.5", "reasoningEffort": "medium" },
     "explorer": { "model": "minimax-coding-plan/MiniMax-M2.1" },
     "sme": { "model": "kimi-for-coding/k2p5" },
     "critic": { "model": "zai-coding-plan/glm-5" },
@@ -363,8 +363,8 @@ Per-agent profiles allow fine-grained overrides:
 ```json
 {
   "agents": {
-    "architect": { "model": "anthropic/claude-opus-4-6" },
-    "coder": { "model": "minimax-coding-plan/MiniMax-M2.5" },
+    "architect": { "model": "anthropic/claude-opus-4-6", "reasoningEffort": "high" },
+    "coder": { "model": "minimax-coding-plan/MiniMax-M2.5", "reasoningEffort": "medium" },
     "explorer": { "model": "minimax-coding-plan/MiniMax-M2.1" },
     "sme": { "model": "kimi-for-coding/k2p5" },
     "critic": { "model": "zai-coding-plan/glm-5" },
@@ -397,6 +397,10 @@ Per-agent profiles allow fine-grained overrides:
   }
 }
 ```
+
+`reasoningEffort` accepts any non-empty string; recommended values are `low`, `medium`, or `high`.
+
+When `swarms` is configured (non-empty), top-level legacy `agents` overrides are ignored. Example: if `agents.coder.reasoningEffort` is `high` but `swarms.local.agents.coder.reasoningEffort` is unset, `local_coder` does not inherit `high`.
 
 Save to `~/.config/opencode/opencode-swarm.json` or `.opencode/swarm.json` in your project root. Project config merges over global config via deep merge — partial overrides do not clobber unspecified fields.
 

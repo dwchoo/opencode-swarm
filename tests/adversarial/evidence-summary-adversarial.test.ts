@@ -55,18 +55,48 @@ const mockListEvidenceTaskIds = listEvidenceTaskIds as jest.MockedFunction<
 
 let tempDir: string;
 let swarmDir: string;
+let originalEnv: NodeJS.ProcessEnv = {};
+
+function captureEnv(): NodeJS.ProcessEnv {
+	return { ...process.env };
+}
+
+function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+	const keys = Object.keys(process.env);
+	for (const key of keys) {
+		if (!(key in snapshot)) {
+			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+			delete process.env[key];
+		}
+	}
+
+	for (const key of Object.keys(snapshot)) {
+		const value = snapshot[key];
+		if (value === undefined) {
+			delete process.env[key];
+		} else {
+			process.env[key] = value;
+		}
+	}
+}
 
 beforeEach(() => {
+	originalEnv = captureEnv();
 	const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 	tempDir = join(tmpdir(), `evidence-adv-test-${uniqueId}`);
 	swarmDir = join(tempDir, 'project');
 	mkdirSync(join(swarmDir, '.swarm'), { recursive: true });
-	jest.clearAllMocks();
+	mockLoadPlanJsonOnly.mockReset();
+	mockLoadEvidence.mockReset();
+	mockListEvidenceTaskIds.mockReset();
 	resetGlobalEventBus();
 });
 
 afterEach(() => {
+	restoreEnv(originalEnv);
 	rmSync(tempDir, { recursive: true, force: true });
+	resetGlobalEventBus();
+	jest.restoreAllMocks();
 });
 
 // ============================================================================
@@ -902,10 +932,7 @@ describe('ATTACK: Event Spam / Resource Exhaustion', () => {
 		};
 
 		const integration = createEvidenceSummaryIntegration(config, false);
-		intitializeWithMockPlan: {
-			// Initialize subscriptions
-			integration.initialize();
-		}
+		integration.initialize();
 
 		const eventBus = getGlobalEventBus();
 

@@ -20,6 +20,30 @@ describe('PlanSyncWorker', () => {
 	let swarmDir: string;
 	let planJsonPath: string;
 	let worker: PlanSyncWorker | null = null;
+	let originalEnv: NodeJS.ProcessEnv = {};
+
+	function captureEnv(): NodeJS.ProcessEnv {
+		return { ...process.env };
+	}
+
+	function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+		const keys = Object.keys(process.env);
+		for (const key of keys) {
+			if (!(key in snapshot)) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key];
+			}
+		}
+
+		for (const key of Object.keys(snapshot)) {
+			const value = snapshot[key];
+			if (value === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = value;
+			}
+		}
+	}
 
 	// Helper to create temp directory structure
 	async function setupTempDir(withSwarm = true, withPlanJson = false): Promise<void> {
@@ -47,26 +71,7 @@ describe('PlanSyncWorker', () => {
 	async function cleanupTempDir(): Promise<void> {
 		if (tempDir) {
 			try {
-				await Bun.write(path.join(tempDir, 'cleanup-marker'), 'cleanup');
-				const files = await Array.fromAsync(new Bun.Glob('**/*').scan({ cwd: tempDir }));
-				for (const file of files.reverse()) {
-					const fullPath = path.join(tempDir, file);
-					try {
-						await Bun.file(fullPath).unlink();
-					} catch {
-						// Ignore cleanup errors
-					}
-				}
-				// Remove directories
-				const dirs = await Array.fromAsync(new Bun.Glob('**/').scan({ cwd: tempDir }));
-				for (const dir of dirs.reverse()) {
-					try {
-						fs.rmdirSync(path.join(tempDir, dir));
-					} catch {
-						// Ignore
-					}
-				}
-				fs.rmdirSync(tempDir);
+				fs.rmSync(tempDir, { recursive: true, force: true });
 			} catch {
 				// Ignore cleanup errors
 			}
@@ -74,7 +79,9 @@ describe('PlanSyncWorker', () => {
 	}
 
 	beforeEach(() => {
-		mockLoadPlan.mockClear();
+		originalEnv = captureEnv();
+		mockLoadPlan.mockReset();
+		mockLoadPlan.mockImplementation(async () => null);
 	});
 
 	afterEach(async () => {
@@ -83,6 +90,7 @@ describe('PlanSyncWorker', () => {
 			worker.dispose();
 			worker = null;
 		}
+		restoreEnv(originalEnv);
 		await cleanupTempDir();
 	});
 

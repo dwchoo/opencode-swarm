@@ -61,6 +61,40 @@ describe('AgentOverrideConfigSchema', () => {
     }
   });
 
+  it('accepts reasoningEffort low', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ reasoningEffort: 'low' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ reasoningEffort: 'low' });
+    }
+  });
+
+  it('accepts reasoningEffort custom', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ reasoningEffort: 'custom' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ reasoningEffort: 'custom' });
+    }
+  });
+
+  it('rejects empty reasoningEffort string', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ reasoningEffort: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects whitespace-only reasoningEffort string', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ reasoningEffort: '   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('does not coerce reasoningEffort case', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ reasoningEffort: 'High' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.reasoningEffort).toBe('High');
+    }
+  });
+
   it('rejects non-string model', () => {
     const result = AgentOverrideConfigSchema.safeParse({ model: 123 });
     expect(result.success).toBe(false);

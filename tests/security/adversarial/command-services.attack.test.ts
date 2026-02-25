@@ -76,6 +76,31 @@ const SAMPLE_EVIDENCE = {
 	updated_at: new Date().toISOString()
 };
 
+let originalEnv: NodeJS.ProcessEnv = {};
+
+function captureEnv(): NodeJS.ProcessEnv {
+	return { ...process.env };
+}
+
+function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+	const keys = Object.keys(process.env);
+	for (const key of keys) {
+		if (!(key in snapshot)) {
+			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+			delete process.env[key];
+		}
+	}
+
+	for (const key of Object.keys(snapshot)) {
+		const value = snapshot[key];
+		if (value === undefined) {
+			delete process.env[key];
+		} else {
+			process.env[key] = value;
+		}
+	}
+}
+
 const mockAgents: Record<string, { name: string; description?: string; config: { model: string; temperature: number; prompt: string } }> = {
 	architect: { 
 		name: 'Architect', 
@@ -93,11 +118,13 @@ describe('ADVERSARIAL: Command Services Attack Vectors', () => {
 	let tempDir: string;
 
 	beforeEach(async () => {
+		originalEnv = captureEnv();
 		tempDir = await mkdtemp(join(tmpdir(), 'swarm-attack-'));
 	});
 
 	afterEach(async () => {
 		await rm(tempDir, { recursive: true, force: true });
+		restoreEnv(originalEnv);
 	});
 
 	/**

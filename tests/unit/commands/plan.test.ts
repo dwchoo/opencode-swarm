@@ -24,17 +24,43 @@ const SAMPLE_PLAN = `# Project Plan
 - [ ] Task 7`;
 
 describe('handlePlanCommand', () => {
-    let tempDir: string;
+	let tempDir: string;
+	let originalEnv: NodeJS.ProcessEnv = {};
 
-    beforeEach(async () => {
-        // Create a temporary directory for each test
-        tempDir = await mkdtemp(join(tmpdir(), 'swarm-test-'));
-    });
+	function captureEnv(): NodeJS.ProcessEnv {
+		return { ...process.env };
+	}
 
-    afterEach(async () => {
-        // Clean up the temporary directory after each test
-        await rm(tempDir, { recursive: true, force: true });
-    });
+	function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+		const keys = Object.keys(process.env);
+		for (const key of keys) {
+			if (!(key in snapshot)) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key];
+			}
+		}
+
+		for (const key of Object.keys(snapshot)) {
+			const value = snapshot[key];
+			if (value === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = value;
+			}
+		}
+	}
+
+	beforeEach(async () => {
+		originalEnv = captureEnv();
+		// Create a temporary directory for each test
+		tempDir = await mkdtemp(join(tmpdir(), 'swarm-test-'));
+	});
+
+	afterEach(async () => {
+		restoreEnv(originalEnv);
+		// Clean up the temporary directory after each test
+		await rm(tempDir, { recursive: true, force: true });
+	});
 
     async function writePlan(dir: string, content: string) {
         // Create .swarm directory and write plan.md

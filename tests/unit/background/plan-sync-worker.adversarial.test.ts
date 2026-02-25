@@ -29,6 +29,30 @@ describe('ADVERSARIAL: Task 3.6 Timeout Safeguards', () => {
 	let swarmDir: string;
 	let planJsonPath: string;
 	let worker: PlanSyncWorker | null = null;
+	let originalEnv: NodeJS.ProcessEnv = {};
+
+	function captureEnv(): NodeJS.ProcessEnv {
+		return { ...process.env };
+	}
+
+	function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+		const keys = Object.keys(process.env);
+		for (const key of keys) {
+			if (!(key in snapshot)) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key];
+			}
+		}
+
+		for (const key of Object.keys(snapshot)) {
+			const value = snapshot[key];
+			if (value === undefined) {
+				delete process.env[key];
+			} else {
+				process.env[key] = value;
+			}
+		}
+	}
 
 	async function setupTempDir(withSwarm = true, withPlanJson = true): Promise<void> {
 		tempDir = path.join(process.cwd(), `.test-adversarial-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -62,7 +86,9 @@ describe('ADVERSARIAL: Task 3.6 Timeout Safeguards', () => {
 	}
 
 	beforeEach(() => {
-		mockLoadPlan.mockClear();
+		originalEnv = captureEnv();
+		mockLoadPlan.mockReset();
+		mockLoadPlan.mockImplementation(async () => null);
 	});
 
 	afterEach(async () => {
@@ -70,6 +96,7 @@ describe('ADVERSARIAL: Task 3.6 Timeout Safeguards', () => {
 			worker.dispose();
 			worker = null;
 		}
+		restoreEnv(originalEnv);
 		await cleanupTempDir();
 	});
 

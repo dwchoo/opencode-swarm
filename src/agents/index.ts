@@ -41,7 +41,12 @@ function getModelForAgent(
 	agentName: string,
 	swarmAgents?: Record<
 		string,
-		{ model?: string; temperature?: number; disabled?: boolean }
+		{
+			model?: string;
+			temperature?: number;
+			reasoningEffort?: string;
+			disabled?: boolean;
+		}
 	>,
 	swarmPrefix?: string,
 ): string {
@@ -74,7 +79,10 @@ function isAgentDisabled(
  */
 function getTemperatureOverride(
 	agentName: string,
-	swarmAgents?: Record<string, { temperature?: number }>,
+	swarmAgents?: Record<
+		string,
+		{ temperature?: number; reasoningEffort?: string }
+	>,
 	swarmPrefix?: string,
 ): number | undefined {
 	const baseAgentName = stripSwarmPrefix(agentName, swarmPrefix);
@@ -82,11 +90,29 @@ function getTemperatureOverride(
 }
 
 /**
+ * Get reasoning effort override for an agent
+ */
+function getReasoningEffortOverride(
+	agentName: string,
+	swarmAgents?: Record<
+		string,
+		{ temperature?: number; reasoningEffort?: string }
+	>,
+	swarmPrefix?: string,
+): string | undefined {
+	const baseAgentName = stripSwarmPrefix(agentName, swarmPrefix);
+	return swarmAgents?.[baseAgentName]?.reasoningEffort;
+}
+
+/**
  * Apply config overrides to an agent definition
  */
 function applyOverrides(
 	agent: AgentDefinition,
-	swarmAgents?: Record<string, { temperature?: number }>,
+	swarmAgents?: Record<
+		string,
+		{ temperature?: number; reasoningEffort?: string }
+	>,
 	swarmPrefix?: string,
 ): AgentDefinition {
 	const tempOverride = getTemperatureOverride(
@@ -97,6 +123,20 @@ function applyOverrides(
 	if (tempOverride !== undefined) {
 		agent.config.temperature = tempOverride;
 	}
+
+	const reasoningEffortOverride = getReasoningEffortOverride(
+		agent.name,
+		swarmAgents,
+		swarmPrefix,
+	);
+	if (reasoningEffortOverride !== undefined) {
+		(
+			agent.config as SDKAgentConfig & {
+				reasoningEffort?: string;
+			}
+		).reasoningEffort = reasoningEffortOverride;
+	}
+
 	return agent;
 }
 
