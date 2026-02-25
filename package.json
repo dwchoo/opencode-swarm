@@ -21,12 +21,15 @@
 	],
 	"files": [
 		"dist",
+		"dist/lang/grammars",
 		"README.md",
 		"LICENSE"
 	],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "rm -rf dist && bun build src/index.ts --outdir dist --target bun --format esm && bun build src/cli/index.ts --outdir dist/cli --target bun --format esm && tsc --emitDeclarationOnly",
+		"copy-grammars": "bun run scripts/copy-grammars.ts",
+		"build": "rm -rf dist && bun run copy-grammars && bun build src/index.ts --outdir dist --target bun --format esm && bun build src/cli/index.ts --outdir dist/cli --target bun --format esm && tsc --emitDeclarationOnly",
+		"postinstall": "bun run copy-grammars",
 		"typecheck": "tsc --noEmit",
 		"test": "bun test",
 		"lint": "biome lint .",
@@ -38,6 +41,8 @@
 	"dependencies": {
 		"@opencode-ai/plugin": "^1.1.53",
 		"@opencode-ai/sdk": "^1.1.53",
+		"@vscode/tree-sitter-wasm": "^0.0.9",
+		"web-tree-sitter": "^0.25.0",
 		"zod": "^4.1.8"
 	},
 	"devDependencies": {

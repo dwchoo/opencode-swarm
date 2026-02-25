@@ -13,6 +13,12 @@ export const EvidenceTypeSchema = z.enum([
 	'approval',
 	'note',
 	'retrospective',
+	'syntax',
+	'placeholder',
+	'sast',
+	'sbom',
+	'build',
+	'quality_budget',
 ]);
 export type EvidenceType = z.infer<typeof EvidenceTypeSchema>;
 
@@ -115,6 +121,63 @@ export const RetrospectiveEvidenceSchema = BaseEvidenceSchema.extend({
 });
 export type RetrospectiveEvidence = z.infer<typeof RetrospectiveEvidenceSchema>;
 
+export const SyntaxEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('syntax'),
+	files_checked: z.number().int(),
+	files_failed: z.number().int(),
+	skipped_count: z.number().int().default(0),
+	files: z
+		.array(
+			z.object({
+				path: z.string(),
+				language: z.string(),
+				ok: z.boolean(),
+				errors: z
+					.array(
+						z.object({
+							line: z.number().int(),
+							column: z.number().int(),
+							message: z.string(),
+						}),
+					)
+					.default([]),
+				skipped_reason: z.string().optional(),
+			}),
+		)
+		.default([]),
+});
+export type SyntaxEvidence = z.infer<typeof SyntaxEvidenceSchema>;
+
+export const PlaceholderEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('placeholder'),
+	details: z.record(z.string(), z.unknown()).optional(),
+});
+export type PlaceholderEvidence = z.infer<typeof PlaceholderEvidenceSchema>;
+
+export const SastEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('sast'),
+	details: z.record(z.string(), z.unknown()).optional(),
+});
+export type SastEvidence = z.infer<typeof SastEvidenceSchema>;
+
+export const SbomEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('sbom'),
+	details: z.record(z.string(), z.unknown()).optional(),
+});
+export type SbomEvidence = z.infer<typeof SbomEvidenceSchema>;
+
+export const BuildEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('build'),
+	details: z.record(z.string(), z.unknown()).optional(),
+});
+export type BuildEvidence = z.infer<typeof BuildEvidenceSchema>;
+
+export const QualityBudgetEvidenceSchema = BaseEvidenceSchema.extend({
+	type: z.literal('quality_budget'),
+	details: z.record(z.string(), z.unknown()).optional(),
+});
+export type QualityBudgetEvidence = z.infer<typeof QualityBudgetEvidenceSchema>;
+
 // Discriminated union of all evidence types
 export const EvidenceSchema = z.discriminatedUnion('type', [
 	ReviewEvidenceSchema,
@@ -123,6 +186,12 @@ export const EvidenceSchema = z.discriminatedUnion('type', [
 	ApprovalEvidenceSchema,
 	NoteEvidenceSchema,
 	RetrospectiveEvidenceSchema,
+	SyntaxEvidenceSchema,
+	PlaceholderEvidenceSchema,
+	SastEvidenceSchema,
+	SbomEvidenceSchema,
+	BuildEvidenceSchema,
+	QualityBudgetEvidenceSchema,
 ]);
 export type Evidence = z.infer<typeof EvidenceSchema>;
 

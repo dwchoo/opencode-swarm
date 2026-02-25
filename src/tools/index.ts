@@ -17,5 +17,10 @@ export {
 	secretscan,
 } from './secretscan';
 export { symbols } from './symbols';
+export {
+	type SyntaxCheckInput,
+	type SyntaxCheckResult,
+	syntaxCheck,
+} from './syntax-check';
 export { test_runner } from './test-runner';
 export { todo_extract } from './todo-extract';

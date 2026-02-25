@@ -110,6 +110,24 @@ export const EvidenceConfigSchema = z.object({
 
 export type EvidenceConfig = z.infer<typeof EvidenceConfigSchema>;
 
+// Gate configuration (new local-only quality/anti-slop flags)
+export const GateFeatureSchema = z.object({
+	enabled: z.boolean().default(true),
+});
+
+export type GateFeature = z.infer<typeof GateFeatureSchema>;
+
+export const GateConfigSchema = z.object({
+	syntax_check: GateFeatureSchema.default({ enabled: true }),
+	placeholder_scan: GateFeatureSchema.default({ enabled: true }),
+	sast_scan: GateFeatureSchema.default({ enabled: true }),
+	sbom_generate: GateFeatureSchema.default({ enabled: true }),
+	build_check: GateFeatureSchema.default({ enabled: true }),
+	quality_budget: GateFeatureSchema.default({ enabled: true }),
+});
+
+export type GateConfig = z.infer<typeof GateConfigSchema>;
+
 // Summary configuration (reversible summaries for oversized tool outputs)
 export const SummaryConfigSchema = z.object({
 	enabled: z.boolean().default(true),
@@ -535,6 +553,9 @@ export const PluginConfigSchema = z.object({
 
 	// Hook configuration
 	hooks: HooksConfigSchema.optional(),
+
+	// Quality gate configuration (v6.9 anti-slop features)
+	gates: GateConfigSchema.optional(),
 
 	// Context budget configuration
 	context_budget: ContextBudgetConfigSchema.optional(),
