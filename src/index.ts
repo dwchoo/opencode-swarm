@@ -320,7 +320,7 @@ const OpenCodeSwarm: Plugin = async (ctx) => {
 			opencodeConfig.command = {
 				...((opencodeConfig.command as Record<string, unknown>) || {}),
 				swarm: {
-					template: '{{arguments}}',
+					template: '$ARGUMENTS',
 					description: 'Swarm management commands',
 				},
 			};

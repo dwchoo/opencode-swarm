@@ -40078,7 +40078,7 @@ var OpenCodeSwarm = async (ctx) => {
       opencodeConfig.command = {
         ...opencodeConfig.command || {},
         swarm: {
-          template: "{{arguments}}",
+          template: "$ARGUMENTS",
           description: "Swarm management commands"
         }
       };
