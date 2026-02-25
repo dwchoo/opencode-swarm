@@ -2,6 +2,8 @@ import { z } from 'zod';
 export declare const AgentOverrideConfigSchema: z.ZodObject<{
     model: z.ZodOptional<z.ZodString>;
     temperature: z.ZodOptional<z.ZodNumber>;
+    variant: z.ZodOptional<z.ZodString>;
+    reasoningEffort: z.ZodOptional<z.ZodString>;
     disabled: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 export type AgentOverrideConfig = z.infer<typeof AgentOverrideConfigSchema>;
@@ -10,6 +12,8 @@ export declare const SwarmConfigSchema: z.ZodObject<{
     agents: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         model: z.ZodOptional<z.ZodString>;
         temperature: z.ZodOptional<z.ZodNumber>;
+        variant: z.ZodOptional<z.ZodString>;
+        reasoningEffort: z.ZodOptional<z.ZodString>;
         disabled: z.ZodOptional<z.ZodBoolean>;
     }, z.core.$strip>>>;
 }, z.core.$strip>;
@@ -281,6 +285,8 @@ export declare const PluginConfigSchema: z.ZodObject<{
     agents: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         model: z.ZodOptional<z.ZodString>;
         temperature: z.ZodOptional<z.ZodNumber>;
+        variant: z.ZodOptional<z.ZodString>;
+        reasoningEffort: z.ZodOptional<z.ZodString>;
         disabled: z.ZodOptional<z.ZodBoolean>;
     }, z.core.$strip>>>;
     swarms: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
@@ -288,6 +294,8 @@ export declare const PluginConfigSchema: z.ZodObject<{
         agents: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
             model: z.ZodOptional<z.ZodString>;
             temperature: z.ZodOptional<z.ZodNumber>;
+            variant: z.ZodOptional<z.ZodString>;
+            reasoningEffort: z.ZodOptional<z.ZodString>;
             disabled: z.ZodOptional<z.ZodBoolean>;
         }, z.core.$strip>>>;
     }, z.core.$strip>>>;

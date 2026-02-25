@@ -95,6 +95,40 @@ describe('AgentOverrideConfigSchema', () => {
     }
   });
 
+  it('accepts variant low', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ variant: 'low' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ variant: 'low' });
+    }
+  });
+
+  it('accepts variant custom', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ variant: 'custom' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ variant: 'custom' });
+    }
+  });
+
+  it('rejects empty variant string', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ variant: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects whitespace-only variant string', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ variant: '   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('does not coerce variant case', () => {
+    const result = AgentOverrideConfigSchema.safeParse({ variant: 'High' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.variant).toBe('High');
+    }
+  });
+
   it('rejects non-string model', () => {
     const result = AgentOverrideConfigSchema.safeParse({ model: 123 });
     expect(result.success).toBe(false);

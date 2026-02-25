@@ -3,17 +3,17 @@
     "architect": {
       "model": "anthropic/claude-sonnet-4-5",
       "temperature": 0.6,
-      "reasoningEffort": "high"
+      "variant": "high"
     },
     "coder": {
       "model": "anthropic/claude-sonnet-4-5",
       "temperature": 0.35,
-      "reasoningEffort": "medium"
+      "variant": "medium"
     },
     "explorer": {
       "model": "google/gemini-2.0-flash",
       "temperature": 0.2,
-      "reasoningEffort": "low"
+      "variant": "low"
     },
     "designer": {
       "disabled": true
@@ -26,17 +26,17 @@
         "architect": {
           "model": "anthropic/claude-sonnet-4-5",
           "temperature": 0.55,
-          "reasoningEffort": "high"
+          "variant": "high"
         },
         "coder": {
           "model": "anthropic/claude-sonnet-4-5",
           "temperature": 0.4,
-          "reasoningEffort": "medium"
+          "variant": "medium"
         },
         "explorer": {
           "model": "google/gemini-2.0-flash",
           "temperature": 0.2,
-          "reasoningEffort": "low"
+          "variant": "low"
         },
         "sme": {
           "model": "google/gemini-2.0-flash",

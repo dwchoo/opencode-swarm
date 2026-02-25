@@ -5,6 +5,12 @@ import { ALL_AGENT_NAMES } from './constants';
 export const AgentOverrideConfigSchema = z.object({
 	model: z.string().optional(),
 	temperature: z.number().min(0).max(2).optional(),
+	variant: z
+		.string()
+		.refine((value) => value.trim().length > 0, {
+			message: 'variant must not be empty',
+		})
+		.optional(),
 	reasoningEffort: z
 		.string()
 		.refine((value) => value.trim().length > 0, {

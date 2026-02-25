@@ -66,7 +66,7 @@ Example output structure:
 import { useState } from 'react';
 
 interface LoginFormProps {
-  onSubmit: (email: string, password: string) => Promise<void>;
+  onSubmit: (email: string, passphrase: string) => Promise<void>;
   onForgotPassword?: () => void;
   isLoading?: boolean;
   error?: string;
@@ -74,7 +74,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSubmit, onForgotPassword, isLoading, error }: LoginFormProps) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [passphrase, setPassphrase] = useState('');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8"

@@ -31222,6 +31222,12 @@ init_zod();
 var AgentOverrideConfigSchema = exports_external.object({
   model: exports_external.string().optional(),
   temperature: exports_external.number().min(0).max(2).optional(),
+  variant: exports_external.string().refine((value) => value.trim().length > 0, {
+    message: "variant must not be empty"
+  }).optional(),
+  reasoningEffort: exports_external.string().refine((value) => value.trim().length > 0, {
+    message: "reasoningEffort must not be empty"
+  }).optional(),
   disabled: exports_external.boolean().optional()
 });
 var SwarmConfigSchema = exports_external.object({
@@ -32124,7 +32130,7 @@ Example output structure:
 import { useState } from 'react';
 
 interface LoginFormProps {
-  onSubmit: (email: string, password: string) => Promise<void>;
+  onSubmit: (email: string, passphrase: string) => Promise<void>;
   onForgotPassword?: () => void;
   isLoading?: boolean;
   error?: string;
@@ -32132,7 +32138,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSubmit, onForgotPassword, isLoading, error }: LoginFormProps) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [passphrase, setPassphrase] = useState('');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8"
@@ -32562,10 +32568,19 @@ function getTemperatureOverride(agentName, swarmAgents, swarmPrefix) {
   const baseAgentName = stripSwarmPrefix(agentName, swarmPrefix);
   return swarmAgents?.[baseAgentName]?.temperature;
 }
+function getVariantOverride(agentName, swarmAgents, swarmPrefix) {
+  const baseAgentName = stripSwarmPrefix(agentName, swarmPrefix);
+  const override = swarmAgents?.[baseAgentName];
+  return override?.variant ?? override?.reasoningEffort;
+}
 function applyOverrides(agent, swarmAgents, swarmPrefix) {
   const tempOverride = getTemperatureOverride(agent.name, swarmAgents, swarmPrefix);
   if (tempOverride !== undefined) {
     agent.config.temperature = tempOverride;
+  }
+  const variantOverride = getVariantOverride(agent.name, swarmAgents, swarmPrefix);
+  if (variantOverride !== undefined) {
+    agent.config.variant = variantOverride;
   }
   return agent;
 }

@@ -93,7 +93,7 @@ describe('createAgents', () => {
             expect(coder?.config.temperature).toBe(0.5);
         });
 
-        it('reasoningEffort override applies correctly', () => {
+        it('legacy reasoningEffort override maps to variant', () => {
             const config = {
                 agents: {
                     coder: {
@@ -104,7 +104,36 @@ describe('createAgents', () => {
 
             const agents = createAgents(config as unknown as PluginConfig);
             const coder = agents.find(a => a.name === 'coder');
-            expect((coder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBe('high');
+            expect(coder?.config.variant).toBe('high');
+        });
+
+        it('explicit variant override applies correctly', () => {
+            const config = {
+                agents: {
+                    coder: {
+                        variant: 'medium'
+                    }
+                }
+            };
+
+            const agents = createAgents(config as unknown as PluginConfig);
+            const coder = agents.find(a => a.name === 'coder');
+            expect(coder?.config.variant).toBe('medium');
+        });
+
+        it('variant takes precedence over reasoningEffort alias', () => {
+            const config = {
+                agents: {
+                    coder: {
+                        variant: 'low',
+                        reasoningEffort: 'high'
+                    }
+                }
+            };
+
+            const agents = createAgents(config as unknown as PluginConfig);
+            const coder = agents.find(a => a.name === 'coder');
+            expect(coder?.config.variant).toBe('low');
         });
 
         it('disabled agent is filtered out', () => {
@@ -187,14 +216,14 @@ describe('createAgents', () => {
             expect(cloudArchitect?.config.prompt).toContain('cloud_');
         });
 
-        it('prefixed swarm agent applies reasoningEffort override from swarms.<id>.agents', () => {
+        it('prefixed swarm agent applies variant override from swarms.<id>.agents', () => {
             const config = {
                 swarms: {
                     local: {
                         name: 'Local',
                         agents: {
                             coder: {
-                                reasoningEffort: 'low'
+                                variant: 'low'
                             }
                         }
                     }
@@ -203,7 +232,7 @@ describe('createAgents', () => {
 
             const agents = createAgents(config as unknown as PluginConfig);
             const localCoder = agents.find(a => a.name === 'local_coder');
-            expect((localCoder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBe('low');
+            expect(localCoder?.config.variant).toBe('low');
         });
 
         it('ignores top-level agents overrides when swarms is configured', () => {
@@ -222,7 +251,7 @@ describe('createAgents', () => {
 
             const agents = createAgents(config as unknown as PluginConfig);
             const localCoder = agents.find(a => a.name === 'local_coder');
-            expect((localCoder?.config as { reasoningEffort?: string } | undefined)?.reasoningEffort).toBeUndefined();
+            expect(localCoder?.config.variant).toBeUndefined();
         });
     });
 
@@ -330,7 +359,7 @@ describe('getAgentConfigs', () => {
         expect(coder.temperature).toBe(0.7);
     });
 
-    it('propagates reasoningEffort overrides in getAgentConfigs', () => {
+    it('maps reasoningEffort overrides to variant in getAgentConfigs', () => {
         const config = {
             agents: {
                 coder: {
@@ -340,8 +369,22 @@ describe('getAgentConfigs', () => {
         };
 
         const configs = getAgentConfigs(config as unknown as PluginConfig);
-        const coder = configs.coder as { reasoningEffort?: string };
-        expect(coder.reasoningEffort).toBe('high');
+        const coder = configs.coder;
+        expect(coder.variant).toBe('high');
+    });
+
+    it('applies explicit variant override in getAgentConfigs', () => {
+        const config = {
+            agents: {
+                coder: {
+                    variant: 'medium'
+                }
+            }
+        };
+
+        const configs = getAgentConfigs(config as unknown as PluginConfig);
+        const coder = configs.coder;
+        expect(coder.variant).toBe('medium');
     });
 
     it('handles disabled agents in getAgentConfigs', () => {
