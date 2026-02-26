@@ -2,338 +2,383 @@ import { describe, expect, test } from 'bun:test';
 import { createArchitectAgent } from '../../../src/agents/architect';
 
 /**
- * QA GATE TESTS: sast_scan Integration (Task 3.4)
+ * QA GATE TESTS: pre_check_batch Integration (v6.10)
  * 
- * Tests for sast_scan gate in the QA sequence:
- * - Gate ordering (sast_scan after secretscan, before reviewer)
- * - Error handling (SAST FINDINGS AT OR ABOVE THRESHOLD return to coder)
- * - Success path (NO FINDINGS proceeds to reviewer)
- * - Non-skippable gate
+ * Tests for pre_check_batch gate in the QA sequence:
+ * - Gate ordering (pre_check_batch after build_check, before reviewer)
+ * - Contains lint:check, secretscan, sast_scan, quality_budget in parallel
+ * - Error handling (gates_passed === false returns to coder, no reviewer)
+ * - Success path (gates_passed === true proceeds to reviewer)
  */
 
-describe('ARCHITECT QA GATE: sast_scan Integration', () => {
+describe('ARCHITECT QA GATE: pre_check_batch Integration', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
-	test('sast_scan is in MANDATORY QA GATE sequence (Rule 7)', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		expect(qaGate).toContain('secretscan');
-		expect(qaGate).toContain('sast_scan');
+	test('pre_check_batch is in MANDATORY QA GATE sequence (Rule 7)', () => {
+		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*(?:``[^`]*`\*[^`]*)?/)?.[0] || 
+			prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
+		expect(qaGate).toContain('build_check');
+		expect(qaGate).toContain('pre_check_batch');
 		expect(qaGate).toContain('reviewer');
 		
-		// Verify ordering: secretscan → sast_scan → reviewer
-		const secretscanPos = qaGate.indexOf('secretscan');
-		const sastPos = qaGate.indexOf('sast_scan');
+		// Verify ordering: build_check → pre_check_batch → reviewer
+		const buildPos = qaGate.indexOf('build_check');
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
 		const reviewerPos = qaGate.indexOf('reviewer');
 		
-		expect(secretscanPos).toBeLessThan(sastPos);
-		expect(sastPos).toBeLessThan(reviewerPos);
+		expect(buildPos).toBeLessThan(preCheckPos);
+		expect(preCheckPos).toBeLessThan(reviewerPos);
 	});
 
-	test('sast_scan has explicit branching language with severity threshold (SAST FINDINGS AT OR ABOVE THRESHOLD vs NO FINDINGS)', () => {
-		// Must have SAST FINDINGS AT OR ABOVE THRESHOLD branch
-		expect(prompt).toContain('SAST FINDINGS AT OR ABOVE THRESHOLD');
+	test('pre_check_batch runs lint:check, secretscan, sast_scan, quality_budget in parallel', () => {
+		// Check the prompt contains all four tools as part of pre_check_batch
+		expect(prompt).toContain('lint:check');
+		expect(prompt).toContain('secretscan');
+		expect(prompt).toContain('sast_scan');
+		expect(prompt).toContain('quality_budget');
+		expect(prompt).toContain('parallel');
+	});
+
+	test('pre_check_batch returns gates_passed boolean', () => {
+		expect(prompt).toContain('gates_passed');
+		expect(prompt).toContain('lint');
+		expect(prompt).toContain('secretscan');
+		expect(prompt).toContain('sast_scan');
+		expect(prompt).toContain('quality_budget');
+		expect(prompt).toContain('total_duration_ms');
+	});
+
+	test('pre_check_batch has explicit branching language (gates_passed === false vs true)', () => {
+		// Must have gates_passed === false branch (return to coder, no reviewer)
+		expect(prompt).toContain('gates_passed === false');
 		expect(prompt).toContain('return to coder');
+		expect(prompt).toContain('Do NOT call @reviewer');
 		
-		// Must have NO FINDINGS branch
-		expect(prompt).toContain('NO FINDINGS');
-		expect(prompt).toContain('proceed to reviewer');
+		// Must have gates_passed === true branch (proceed to reviewer)
+		expect(prompt).toContain('gates_passed === true');
+		expect(prompt).toContain('proceed to @reviewer');
 	});
 
-	test('sast_scan runs AFTER secretscan in Phase 5', () => {
+	test('pre_check_batch runs AFTER build_check in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const secretscanPos = phase5Section.indexOf('5h.');
-		const sastPos = phase5Section.indexOf('5i.');
+		const buildPos = phase5Section.indexOf('5h.');
+		const preCheckPos = phase5Section.indexOf('5i.');
 		
-		expect(secretscanPos).toBeLessThan(sastPos);
-		expect(phase5Section).toContain('sast_scan');
+		expect(buildPos).toBeLessThan(preCheckPos);
+		expect(phase5Section).toContain('pre_check_batch');
 	});
 
-	test('sast_scan runs BEFORE reviewer in Phase 5', () => {
+	test('pre_check_batch runs BEFORE reviewer in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const sastPos = phase5Section.indexOf('5i.');
+		const preCheckPos = phase5Section.indexOf('5i.');
 		const reviewerPos = phase5Section.indexOf('5j.');
 		
-		expect(sastPos).toBeLessThan(reviewerPos);
+		expect(preCheckPos).toBeLessThan(reviewerPos);
 		expect(phase5Section).toContain('reviewer');
 	});
 
-	test('sast_scan findings AT OR ABOVE THRESHOLD triggers coder retry', () => {
+	test('pre_check_batch gates_failed === false returns to coder (no reviewer)', () => {
 		// In Phase 5i
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const sastStep = phase5Section.substring(
+		const preCheckStep = phase5Section.substring(
 			phase5Section.indexOf('5i.'),
 			phase5Section.indexOf('5j.')
 		);
 		
-		expect(sastStep).toContain('SAST FINDINGS AT OR ABOVE THRESHOLD');
-		expect(sastStep).toContain('return to coder');
+		expect(preCheckStep).toContain('gates_passed === false');
+		expect(preCheckStep).toContain('@coder');  // "return structured rejection to @coder"
+		expect(preCheckStep).toContain('Do NOT call @reviewer');
 	});
 
-	test('sast_scan clean proceeds to build_check (then to reviewer)', () => {
+	test('pre_check_batch gates_passed === true proceeds to reviewer', () => {
 		// In Phase 5i
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const sastStep = phase5Section.substring(
+		const preCheckStep = phase5Section.substring(
 			phase5Section.indexOf('5i.'),
 			phase5Section.indexOf('5j.')
 		);
 		
-		expect(sastStep).toContain('NO FINDINGS');
-		expect(sastStep).toContain('proceed to build_check');
+		expect(preCheckStep).toContain('gates_passed === true');
+		expect(preCheckStep).toContain('proceed to @reviewer');
 	});
 
-	test('sast_scan cannot be skipped in QA sequence', () => {
+	test('pre_check_batch cannot be skipped in QA sequence', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
-		// sast_scan is mandatory, not optional
+		// pre_check_batch is mandatory, not optional
 		expect(qaGate.toLowerCase()).not.toContain('optional');
 		expect(qaGate.toLowerCase()).not.toContain('skip');
 		
-		// Must run after secretscan
-		const secretscanPos = qaGate.indexOf('secretscan');
-		const sastPos = qaGate.indexOf('sast_scan');
-		expect(sastPos).toBeGreaterThan(secretscanPos);
+		// Must run after build_check
+		const buildPos = qaGate.indexOf('build_check');
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
+		expect(preCheckPos).toBeGreaterThan(buildPos);
 		
 		// Must run before reviewer
 		const reviewerPos = qaGate.indexOf('reviewer');
-		expect(reviewerPos).toBeGreaterThan(sastPos);
+		expect(reviewerPos).toBeGreaterThan(preCheckPos);
 	});
 
-	test('sast_scan triggers security gate (alongside secretscan)', () => {
-		// Security gate should trigger on sast_scan findings
-		const securityGate = prompt.match(/Security gate:[^`]*/)?.[0] || '';
-		expect(securityGate).toContain('sast_scan');
-		expect(securityGate).toContain('ANY findings at or above threshold');
-	});
-
-	test('sast_scan runs AFTER lint in QA sequence', () => {
+	test('pre_check_batch runs BEFORE test_engineer in QA sequence', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
-		const lintPos = qaGate.indexOf('lint');
-		const sastPos = qaGate.indexOf('sast_scan');
-		
-		expect(lintPos).toBeLessThan(sastPos);
-	});
-
-	test('sast_scan is ordered before test_engineer in QA sequence', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		
-		const sastPos = qaGate.indexOf('sast_scan');
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
 		const testPos = qaGate.indexOf('verification tests');
 		
-		expect(testPos).toBeGreaterThan(sastPos);
+		expect(testPos).toBeGreaterThan(preCheckPos);
 	});
 });
 
-describe('ARCHITECT QA GATE: sast_scan Tool Reference', () => {
+describe('ARCHITECT QA GATE: pre_check_batch Tool Reference', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
-	test('Available Tools includes sast_scan', () => {
+	test('Available Tools includes pre_check_batch', () => {
 		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
+		expect(toolsSection).toContain('pre_check_batch');
+	});
+
+	test('pre_check_batch description includes parallel verification', () => {
+		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
+		// Should mention it runs verification tools in parallel
+		expect(toolsSection).toContain('parallel');
+		expect(toolsSection).toContain('lint');
+		expect(toolsSection).toContain('secretscan');
 		expect(toolsSection).toContain('sast_scan');
-	});
-
-	test('sast_scan description includes static analysis', () => {
-		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
-		// Should mention it's a static analysis security scan
-		expect(toolsSection).toContain('static analysis security scan');
+		expect(toolsSection).toContain('quality_budget');
 	});
 });
 
-describe('ARCHITECT QA GATE: sast_scan Anti-Bypass', () => {
+describe('ARCHITECT QA GATE: pre_check_batch Anti-Bypass', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
-	test('sast_scan is mandatory (not skippable)', () => {
+	test('pre_check_batch is mandatory (not skippable)', () => {
+		// Check in Rule 7 sequence
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
 		// Must appear in the sequence
-		expect(qaGate).toContain('sast_scan');
+		expect(qaGate).toContain('pre_check_batch');
 		
 		// Cannot be skipped
-		expect(qaGate.toLowerCase()).not.toMatch(/sast_scan.*skip/);
-		expect(qaGate.toLowerCase()).not.toMatch(/optional.*sast_scan/);
+		expect(qaGate.toLowerCase()).not.toMatch(/pre_check_batch.*skip/);
+		expect(qaGate.toLowerCase()).not.toMatch(/optional.*pre_check_batch/);
 	});
 
-	test('sast_scan ordering cannot be bypassed by reviewer coming earlier', () => {
+	test('pre_check_batch ordering cannot be bypassed by reviewer coming earlier', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
 		// Get positions
-		const secretscanPos = qaGate.indexOf('secretscan');
-		const sastPos = qaGate.indexOf('sast_scan');
+		const buildPos = qaGate.indexOf('build_check');
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
 		const reviewerPos = qaGate.indexOf('reviewer');
 		
-		// sast_scan MUST be between secretscan and reviewer
-		expect(secretscanPos).toBeLessThan(sastPos);
-		expect(sastPos).toBeLessThan(reviewerPos);
+		// pre_check_batch MUST be between build_check and reviewer
+		expect(buildPos).toBeLessThan(preCheckPos);
+		expect(preCheckPos).toBeLessThan(reviewerPos);
 	});
 
-	test('secretscan proceeds to sast_scan (not directly to reviewer)', () => {
+	test('build_check proceeds to pre_check_batch (not directly to reviewer)', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		// 5h is secretscan
-		const secretscanStep = phase5Section.substring(
+		// 5h is build_check
+		const buildStep = phase5Section.substring(
 			phase5Section.indexOf('5h.'),
 			phase5Section.indexOf('5i.')
 		);
 		
-		// secretscan should proceed to sast_scan, not to reviewer
-		expect(secretscanStep).toContain('proceed to sast_scan');
-		expect(secretscanStep).not.toContain('proceed to reviewer');
+		// build_check should proceed to pre_check_batch, not to reviewer
+		expect(buildStep).toContain('proceed to pre_check_batch');
+		expect(buildStep).not.toContain('proceed to reviewer');
 	});
 
-	test('sast_scan gating is distinct from secretscan gating', () => {
-		// sast_scan has threshold-based findings, secretscan has any findings
+	test('pre_check_batch gating is distinct from build_check gating', () => {
+		// pre_check_batch has different gating logic than build_check
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		// secretscan step (5h)
-		const secretscanStep = phase5Section.substring(
+		// build_check step (5h)
+		const buildStep = phase5Section.substring(
 			phase5Section.indexOf('5h.'),
 			phase5Section.indexOf('5i.')
 		);
 		
-		// sast_scan step (5i)
-		const sastStep = phase5Section.substring(
+		// pre_check_batch step (5i)
+		const preCheckStep = phase5Section.substring(
 			phase5Section.indexOf('5i.'),
 			phase5Section.indexOf('5j.')
 		);
 		
-		// secretscan: FINDINGS → return to coder (any findings)
-		expect(secretscanStep).toContain('FINDINGS');
+		// build_check: BUILD FAILS → return to coder (two paths in v6.10)
+		expect(buildStep).toContain('BUILD FAILS');
+		expect(buildStep).toContain('SUCCESS');
 		
-		// sast_scan: SAST FINDINGS AT OR ABOVE THRESHOLD → return to coder
-		expect(sastStep).toContain('SAST FINDINGS AT OR ABOVE THRESHOLD');
+		// pre_check_batch: gates_passed === false → return to coder (no reviewer)
+		expect(preCheckStep).toContain('gates_passed === false');
+		expect(preCheckStep).toContain('Do NOT call @reviewer');
 		
-		// Both have NO FINDINGS proceeding
-		expect(secretscanStep).toContain('NO FINDINGS');
-		expect(sastStep).toContain('NO FINDINGS');
+		// pre_check_batch: gates_passed === true → proceed to reviewer
+		expect(preCheckStep).toContain('gates_passed === true');
+		expect(preCheckStep).toContain('proceed to @reviewer');
+	});
+
+	test('pre_check_batch runs four tools in parallel (not sequential)', () => {
+		const phase5Section = prompt.substring(
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
+		);
+		
+		const preCheckStep = phase5Section.substring(
+			phase5Section.indexOf('5i.'),
+			phase5Section.indexOf('5j.')
+		);
+		
+		// Should mention parallel execution
+		expect(preCheckStep.toLowerCase()).toContain('parallel');
+		
+		// Should list all four tools
+		expect(preCheckStep).toContain('lint:check');
+		expect(preCheckStep).toContain('secretscan');
+		expect(preCheckStep).toContain('sast_scan');
+		expect(preCheckStep).toContain('quality_budget');
+	});
+
+	test('pre_check_batch returns structured results', () => {
+		const phase5Section = prompt.substring(
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
+		);
+		
+		const preCheckStep = phase5Section.substring(
+			phase5Section.indexOf('5i.'),
+			phase5Section.indexOf('5j.')
+		);
+		
+		// Should return structured results
+		expect(preCheckStep).toContain('gates_passed');
+		expect(preCheckStep).toContain('lint');
+		expect(preCheckStep).toContain('secretscan');
+		expect(preCheckStep).toContain('sast_scan');
+		expect(preCheckStep).toContain('quality_budget');
+		expect(preCheckStep).toContain('total_duration_ms');
 	});
 });
 
-describe('ARCHITECT QA GATE: build_check Integration', () => {
+/**
+ * QA GATE TESTS: build_check Integration (v6.10 - now at step 5h)
+ * 
+ * Tests for build_check gate in the QA sequence:
+ * - Gate ordering (build_check after lint, before pre_check_batch)
+ * - Error handling (BUILD FAILS return to coder)
+ * - Success path (SUCCESS proceeds to pre_check_batch)
+ */
+
+describe('ARCHITECT QA GATE: build_check Integration (v6.10)', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
 	test('build_check is in MANDATORY QA GATE sequence (Rule 7)', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		expect(qaGate).toContain('sast_scan');
+		expect(qaGate).toContain('lint');
 		expect(qaGate).toContain('build_check');
+		expect(qaGate).toContain('pre_check_batch');
 		expect(qaGate).toContain('reviewer');
 		
-		// Verify ordering: sast_scan → build_check → reviewer
-		const sastPos = qaGate.indexOf('sast_scan');
+		// Verify ordering: lint → build_check → pre_check_batch → reviewer
+		const lintPos = qaGate.indexOf('lint');
 		const buildPos = qaGate.indexOf('build_check');
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
 		const reviewerPos = qaGate.indexOf('reviewer');
 		
-		expect(sastPos).toBeLessThan(buildPos);
-		expect(buildPos).toBeLessThan(reviewerPos);
+		expect(lintPos).toBeLessThan(buildPos);
+		expect(buildPos).toBeLessThan(preCheckPos);
+		expect(preCheckPos).toBeLessThan(reviewerPos);
 	});
 
-	test('build_check has explicit branching language with three paths', () => {
-		// Must have BUILD FAILURES branch
-		expect(prompt).toContain('BUILD FAILURES');
+	test('build_check has explicit branching language with two paths', () => {
+		// Must have BUILD FAILS branch (note: v6.10 uses "BUILD FAILS" not "BUILD FAILURES")
+		expect(prompt).toContain('BUILD FAILS');
 		expect(prompt).toContain('return to coder');
 		
-		// Must have SKIPPED (no toolchain) branch
-		expect(prompt).toContain('SKIPPED (no toolchain)');
-		expect(prompt).toContain('proceed');
-		
-		// Must have PASSED branch
-		expect(prompt).toContain('PASSED');
-		expect(prompt).toContain('proceed to reviewer');
+		// Must have SUCCESS branch (v6.10 removed SKIPPED path)
+		expect(prompt).toContain('SUCCESS');
+		expect(prompt).toContain('proceed to pre_check_batch');
 	});
 
-	test('build_check runs AFTER sast_scan in Phase 5', () => {
+	test('build_check runs AFTER lint in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const sastPos = phase5Section.indexOf('5i.');
-		const buildPos = phase5Section.indexOf('5j.');
+		const lintPos = phase5Section.indexOf('5g.');
+		const buildPos = phase5Section.indexOf('5h.');
 		
-		expect(sastPos).toBeLessThan(buildPos);
+		expect(lintPos).toBeLessThan(buildPos);
 		expect(phase5Section).toContain('build_check');
 	});
 
-	test('build_check runs BEFORE reviewer in Phase 5', () => {
+	test('build_check runs BEFORE pre_check_batch in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const buildPos = phase5Section.indexOf('5j.');
-		const reviewerPos = phase5Section.indexOf('5k.');
+		const buildPos = phase5Section.indexOf('5h.');
+		const preCheckPos = phase5Section.indexOf('5i.');
 		
-		expect(buildPos).toBeLessThan(reviewerPos);
-		expect(phase5Section).toContain('reviewer');
+		expect(buildPos).toBeLessThan(preCheckPos);
+		expect(phase5Section).toContain('pre_check_batch');
 	});
 
 	test('build_check failures triggers coder retry', () => {
-		// In Phase 5j
+		// In Phase 5h
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
+			phase5Section.indexOf('5h.'),
+			phase5Section.indexOf('5i.')
 		);
 		
-		expect(buildStep).toContain('BUILD FAILURES');
+		expect(buildStep).toContain('BUILD FAILS');
 		expect(buildStep).toContain('return to coder');
 	});
 
-	test('build_check skipped (no toolchain) proceeds to reviewer', () => {
-		// In Phase 5j
+	test('build_check success proceeds to pre_check_batch', () => {
+		// In Phase 5h
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
+			phase5Section.indexOf('5h.'),
+			phase5Section.indexOf('5i.')
 		);
 		
-		expect(buildStep).toContain('SKIPPED (no toolchain)');
-		expect(buildStep).toContain('proceed');
-	});
-
-	test('build_check passed proceeds to quality_budget', () => {
-		// In Phase 5j
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
-		);
-		
-		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
-		);
-		
-		expect(buildStep).toContain('PASSED');
-		expect(buildStep).toContain('proceed to quality_budget');
+		expect(buildStep).toContain('SUCCESS');
+		expect(buildStep).toContain('proceed to pre_check_batch');
 	});
 
 	test('build_check cannot be skipped in QA sequence', () => {
@@ -342,10 +387,10 @@ describe('ARCHITECT QA GATE: build_check Integration', () => {
 		// build_check is mandatory in sequence
 		expect(qaGate).toContain('build_check');
 		
-		// Must run after sast_scan
-		const sastPos = qaGate.indexOf('sast_scan');
+		// Must run after lint
+		const lintPos = qaGate.indexOf('lint');
 		const buildPos = qaGate.indexOf('build_check');
-		expect(buildPos).toBeGreaterThan(sastPos);
+		expect(buildPos).toBeGreaterThan(lintPos);
 		
 		// Must run before reviewer
 		const reviewerPos = qaGate.indexOf('reviewer');
@@ -377,7 +422,7 @@ describe('ARCHITECT QA GATE: build_check Tool Reference', () => {
 	});
 });
 
-describe('ARCHITECT QA GATE: build_check Anti-Bypass', () => {
+describe('ARCHITECT QA GATE: build_check Anti-Bypass (v6.10)', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
 	test('build_check is mandatory (not skippable)', () => {
@@ -389,102 +434,63 @@ describe('ARCHITECT QA GATE: build_check Anti-Bypass', () => {
 		
 		// Check detailed branching in Phase 5
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
+			phase5Section.indexOf('5h.'),
+			phase5Section.indexOf('5i.')
 		);
 		
-		// Cannot be bypassed - must have three distinct paths
-		expect(buildStep).toContain('BUILD FAILURES');
-		expect(buildStep).toContain('SKIPPED (no toolchain)');
-		expect(buildStep).toContain('PASSED');
+		// Cannot be bypassed - must have two distinct paths (v6.10)
+		expect(buildStep).toContain('BUILD FAILS');
+		expect(buildStep).toContain('SUCCESS');
 	});
 
 	test('build_check ordering cannot be bypassed by reviewer coming earlier', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
 		// Get positions
-		const sastPos = qaGate.indexOf('sast_scan');
+		const lintPos = qaGate.indexOf('lint');
 		const buildPos = qaGate.indexOf('build_check');
 		const reviewerPos = qaGate.indexOf('reviewer');
 		
-		// build_check MUST be between sast_scan and reviewer
-		expect(sastPos).toBeLessThan(buildPos);
+		// build_check MUST be between lint and reviewer
+		expect(lintPos).toBeLessThan(buildPos);
 		expect(buildPos).toBeLessThan(reviewerPos);
 	});
 
-	test('sast_scan proceeds to build_check (not directly to reviewer)', () => {
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+	test('lint proceeds to build_check (in Rule 7 detailed steps)', () => {
+		// In Rule 7 detailed steps, lint says SUCCESS → proceed to build_check
+		const rule7Section = prompt.substring(
+			prompt.indexOf('MANDATORY QA GATE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		// 5i is sast_scan
-		const sastStep = phase5Section.substring(
-			phase5Section.indexOf('5i.'),
-			phase5Section.indexOf('5j.')
-		);
-		
-		// sast_scan should proceed to build_check, not to reviewer
-		expect(sastStep).toContain('proceed to build_check');
-		expect(sastStep).not.toContain('proceed to reviewer');
+		// lint should proceed to build_check in Rule 7
+		expect(rule7Section).toContain('proceed to build_check');
 	});
 
-	test('build_check gating has three distinct paths', () => {
-		// build_check has three paths: failures, skipped, passed
+	test('build_check gating has two distinct paths', () => {
+		// build_check has two paths in v6.10: failures, success
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		// build_check step (5j)
+		// build_check step (5h)
 		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
+			phase5Section.indexOf('5h.'),
+			phase5Section.indexOf('5i.')
 		);
 		
-		// BUILD FAILURES → return to coder
-		expect(buildStep).toContain('BUILD FAILURES');
+		// BUILD FAILS → return to coder
+		expect(buildStep).toContain('BUILD FAILS');
 		
-		// SKIPPED (no toolchain) → proceed
-		expect(buildStep).toContain('SKIPPED (no toolchain)');
-		
-		// PASSED → proceed to quality_budget (not directly to reviewer)
-		expect(buildStep).toContain('PASSED');
-		expect(buildStep).toContain('proceed to quality_budget');
-	});
-
-	test('build_check is distinct from sast_scan gating', () => {
-		// build_check has different failure modes than sast_scan
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
-		);
-		
-		// sast_scan step (5i)
-		const sastStep = phase5Section.substring(
-			phase5Section.indexOf('5i.'),
-			phase5Section.indexOf('5j.')
-		);
-		
-		// build_check step (5j)
-		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
-		);
-		
-		// sast_scan: SAST FINDINGS AT OR ABOVE THRESHOLD → return to coder
-		expect(sastStep).toContain('SAST FINDINGS AT OR ABOVE THRESHOLD');
-		
-		// build_check: BUILD FAILURES → return to coder
-		expect(buildStep).toContain('BUILD FAILURES');
-		
-		// build_check has skipped path that sast_scan doesn't have
-		expect(buildStep).toContain('SKIPPED (no toolchain)');
+		// SUCCESS → proceed to pre_check_batch (not directly to reviewer)
+		expect(buildStep).toContain('SUCCESS');
+		expect(buildStep).toContain('proceed to pre_check_batch');
 	});
 });
 
@@ -504,15 +510,12 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		expect(qaGate).toContain('placeholder_scan');
 		expect(qaGate).toContain('syntax_check');
-		expect(qaGate).toContain('imports');
 		
-		// Verify ordering: syntax_check → placeholder_scan → imports
+		// Verify ordering: syntax_check → placeholder_scan → ... (imports is in detailed steps)
 		const syntaxPos = qaGate.indexOf('syntax_check');
 		const placeholderPos = qaGate.indexOf('placeholder_scan');
-		const importsPos = qaGate.indexOf('imports');
 		
 		expect(syntaxPos).toBeLessThan(placeholderPos);
-		expect(placeholderPos).toBeLessThan(importsPos);
 	});
 
 	test('placeholder_scan has explicit branching language (PLACEHOLDER FINDINGS vs NO FINDINGS)', () => {
@@ -527,8 +530,8 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 
 	test('placeholder_scan runs AFTER syntax_check in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const syntaxPos = phase5Section.indexOf('5d.');
@@ -540,8 +543,8 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 
 	test('placeholder_scan runs BEFORE imports in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const placeholderPos = phase5Section.indexOf('5e.');
@@ -554,8 +557,8 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 	test('placeholder_scan findings triggers coder retry', () => {
 		// In Phase 5e
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const placeholderStep = phase5Section.substring(
@@ -570,8 +573,8 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 	test('placeholder_scan clean proceeds to imports', () => {
 		// In Phase 5e
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const placeholderStep = phase5Section.substring(
@@ -595,9 +598,9 @@ describe('ARCHITECT QA GATE: placeholder_scan Integration', () => {
 		const placeholderPos = qaGate.indexOf('placeholder_scan');
 		expect(placeholderPos).toBeGreaterThan(syntaxPos);
 		
-		// Must run before secretscan
-		const secretscanPos = qaGate.indexOf('secretscan');
-		expect(secretscanPos).toBeGreaterThan(placeholderPos);
+		// Must run before pre_check_batch
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
+		expect(preCheckPos).toBeGreaterThan(placeholderPos);
 	});
 
 	test('placeholder_scan runs BEFORE reviewer in QA sequence', () => {
@@ -626,15 +629,14 @@ describe('ARCHITECT QA GATE: syntax_check Integration', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		expect(qaGate).toContain('syntax_check');
 		expect(qaGate).toContain('diff');
-		expect(qaGate).toContain('imports');
 		
-		// Verify ordering: diff → syntax_check → imports
+		// Verify ordering: diff → syntax_check → placeholder_scan
 		const diffPos = qaGate.indexOf('diff');
 		const syntaxPos = qaGate.indexOf('syntax_check');
-		const importsPos = qaGate.indexOf('imports');
+		const placeholderPos = qaGate.indexOf('placeholder_scan');
 		
 		expect(diffPos).toBeLessThan(syntaxPos);
-		expect(syntaxPos).toBeLessThan(importsPos);
+		expect(syntaxPos).toBeLessThan(placeholderPos);
 	});
 
 	test('syntax_check has explicit branching language (SYNTACTIC ERRORS vs NO ERRORS)', () => {
@@ -644,13 +646,13 @@ describe('ARCHITECT QA GATE: syntax_check Integration', () => {
 		
 		// Must have NO ERRORS branch
 		expect(prompt).toContain('NO ERRORS');
-		expect(prompt).toContain('proceed to imports');
+		expect(prompt).toContain('proceed to placeholder_scan');
 	});
 
 	test('syntax_check runs AFTER diff in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const diffPos = phase5Section.indexOf('5c.');
@@ -660,24 +662,24 @@ describe('ARCHITECT QA GATE: syntax_check Integration', () => {
 		expect(phase5Section).toContain('syntax_check');
 	});
 
-	test('syntax_check runs BEFORE imports in Phase 5', () => {
+	test('syntax_check runs BEFORE placeholder_scan in Phase 5', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const syntaxPos = phase5Section.indexOf('5d.');
-		const importsPos = phase5Section.indexOf('5e.');
+		const placeholderPos = phase5Section.indexOf('5e.');
 		
-		expect(syntaxPos).toBeLessThan(importsPos);
-		expect(phase5Section).toContain('imports');
+		expect(syntaxPos).toBeLessThan(placeholderPos);
+		expect(phase5Section).toContain('placeholder_scan');
 	});
 
 	test('syntax_check error triggers coder retry', () => {
 		// In Phase 5d
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const syntaxStep = phase5Section.substring(
@@ -692,8 +694,8 @@ describe('ARCHITECT QA GATE: syntax_check Integration', () => {
 	test('syntax_check clean proceeds to placeholder_scan', () => {
 		// In Phase 5d
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		const syntaxStep = phase5Section.substring(
@@ -712,10 +714,10 @@ describe('ARCHITECT QA GATE: syntax_check Integration', () => {
 		expect(qaGate.toLowerCase()).not.toContain('optional');
 		expect(qaGate.toLowerCase()).not.toContain('skip');
 		
-		// Must run before secretscan
+		// Must run before pre_check_batch
 		const syntaxPos = qaGate.indexOf('syntax_check');
-		const secretscanPos = qaGate.indexOf('secretscan');
-		expect(secretscanPos).toBeGreaterThan(syntaxPos);
+		const preCheckPos = qaGate.indexOf('pre_check_batch');
+		expect(preCheckPos).toBeGreaterThan(syntaxPos);
 	});
 
 	test('syntax_check runs BEFORE reviewer in QA sequence', () => {
@@ -745,232 +747,137 @@ describe('ARCHITECT QA GATE: syntax_check Tool Reference', () => {
 });
 
 /**
- * QA GATE TESTS: quality_budget Integration (Task 6.4)
+ * QA GATE TESTS: Security Tools (secretscan, sast_scan) now inside pre_check_batch
  * 
- * Tests for quality_budget gate in the QA sequence:
- * - Gate ordering (quality_budget after build_check, before reviewer)
- * - Error handling (QUALITY VIOLATIONS return to coder)
- * - Success path (WITHIN BUDGET proceeds to reviewer)
+ * These tests verify that secretscan and sast_scan are still present in the prompt
+ * but now run inside pre_check_batch as parallel tools, not as standalone steps.
  */
 
-describe('ARCHITECT QA GATE: quality_budget Integration', () => {
+describe('ARCHITECT QA GATE: secretscan and sast_scan in pre_check_batch', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
-	test('quality_budget is in MANDATORY QA GATE sequence (Rule 7)', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		expect(qaGate).toContain('build_check');
-		expect(qaGate).toContain('quality_budget');
-		expect(qaGate).toContain('reviewer');
-		
-		// Verify ordering: build_check → quality_budget → reviewer
-		const buildPos = qaGate.indexOf('build_check');
-		const qualityPos = qaGate.indexOf('quality_budget');
-		const reviewerPos = qaGate.indexOf('reviewer');
-		
-		expect(buildPos).toBeLessThan(qualityPos);
-		expect(qualityPos).toBeLessThan(reviewerPos);
+	test('secretscan is in Available Tools', () => {
+		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
+		expect(toolsSection).toContain('secretscan');
 	});
 
-	test('quality_budget has explicit branching language (QUALITY VIOLATIONS vs WITHIN BUDGET)', () => {
-		// Must have QUALITY VIOLATIONS branch
-		expect(prompt).toContain('QUALITY VIOLATIONS');
-		expect(prompt).toContain('return to coder');
-		
-		// Must have WITHIN BUDGET branch
-		expect(prompt).toContain('WITHIN BUDGET');
-		expect(prompt).toContain('proceed to reviewer');
+	test('sast_scan is in Available Tools', () => {
+		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
+		expect(toolsSection).toContain('sast_scan');
 	});
 
-	test('quality_budget runs AFTER build_check in Phase 5', () => {
+	test('secretscan runs inside pre_check_batch (not as standalone step 5h)', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const buildPos = phase5Section.indexOf('5j.');
-		const qualityPos = phase5Section.indexOf('5k.');
+		// 5h should be build_check, NOT secretscan
+		const step5h = phase5Section.substring(
+			phase5Section.indexOf('5h.'),
+			phase5Section.indexOf('5i.')
+		);
+		expect(step5h).toContain('build_check');
+		expect(step5h).not.toContain('secretscan');
 		
-		expect(buildPos).toBeLessThan(qualityPos);
-		expect(phase5Section).toContain('quality_budget');
+		// pre_check_batch (5i) should contain secretscan
+		const step5i = phase5Section.substring(
+			phase5Section.indexOf('5i.'),
+			phase5Section.indexOf('5j.')
+		);
+		expect(step5i).toContain('secretscan');
 	});
 
-	test('quality_budget runs BEFORE reviewer in Phase 5', () => {
+	test('sast_scan runs inside pre_check_batch (not as standalone step 5i)', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const qualityPos = phase5Section.indexOf('5k.');
-		const reviewerPos = phase5Section.indexOf('5l.');
-		
-		expect(qualityPos).toBeLessThan(reviewerPos);
-		expect(phase5Section).toContain('reviewer');
+		// 5i should be pre_check_batch, NOT standalone sast_scan
+		const step5i = phase5Section.substring(
+			phase5Section.indexOf('5i.'),
+			phase5Section.indexOf('5j.')
+		);
+		expect(step5i).toContain('pre_check_batch');
+		expect(step5i).toContain('sast_scan');
 	});
 
-	test('quality_budget violations triggers coder retry', () => {
-		// In Phase 5k
+	test('secretscan and sast_scan mentioned in Security gate trigger', () => {
+		// Security gate should still trigger on secretscan and sast_scan findings
+		const securityGate = prompt.match(/Security gate:[^`]*/)?.[0] || '';
+		expect(securityGate).toContain('secretscan');
+		expect(securityGate).toContain('sast_scan');
+		expect(securityGate).toContain('ANY findings');
+	});
+
+	test('secretscan and sast_scan are in the prompt (Rule 7 detailed steps)', () => {
+		// The detailed steps after Rule 7 sequence should mention these tools
+		// Look for pre_check_batch description which contains all four tools
+		expect(prompt).toContain('secretscan');
+		expect(prompt).toContain('sast_scan');
+		
+		// pre_check_batch description should contain secretscan and sast_scan
+		// Look in the full prompt for the pre_check_batch section
+		expect(prompt).toMatch(/pre_check_batch[^`]*secretscan/s);
+		expect(prompt).toMatch(/pre_check_batch[^`]*sast_scan/s);
+	});
+
+	test('quality_budget runs inside pre_check_batch (not as standalone step 5k)', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
-		const qualityStep = phase5Section.substring(
+		// There should be no standalone quality_budget step at 5k
+		// 5k should be Security gate
+		const step5k = phase5Section.substring(
 			phase5Section.indexOf('5k.'),
 			phase5Section.indexOf('5l.')
 		);
+		expect(step5k).toContain('Security gate');
 		
-		expect(qualityStep).toContain('QUALITY VIOLATIONS');
-		expect(qualityStep).toContain('return to coder');
-	});
-
-	test('quality_budget within budget proceeds to reviewer', () => {
-		// In Phase 5k
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+		// pre_check_batch (5i) should contain quality_budget
+		const step5i = phase5Section.substring(
+			phase5Section.indexOf('5i.'),
+			phase5Section.indexOf('5j.')
 		);
-		
-		const qualityStep = phase5Section.substring(
-			phase5Section.indexOf('5k.'),
-			phase5Section.indexOf('5l.')
-		);
-		
-		expect(qualityStep).toContain('WITHIN BUDGET');
-		expect(qualityStep).toContain('proceed to reviewer');
+		expect(step5i).toContain('quality_budget');
 	});
 
-	test('quality_budget cannot be skipped in QA sequence', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		
-		// quality_budget is mandatory, not optional
-		expect(qaGate.toLowerCase()).not.toContain('optional');
-		expect(qaGate.toLowerCase()).not.toContain('skip');
-		
-		// Must run after build_check
-		const buildPos = qaGate.indexOf('build_check');
-		const qualityPos = qaGate.indexOf('quality_budget');
-		expect(qualityPos).toBeGreaterThan(buildPos);
-		
-		// Must run before reviewer
-		const reviewerPos = qaGate.indexOf('reviewer');
-		expect(reviewerPos).toBeGreaterThan(qualityPos);
-	});
-
-	test('quality_budget runs BEFORE test_engineer in QA sequence', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		
-		const qualityPos = qaGate.indexOf('quality_budget');
-		const testPos = qaGate.indexOf('verification tests');
-		
-		expect(testPos).toBeGreaterThan(qualityPos);
-	});
-});
-
-describe('ARCHITECT QA GATE: quality_budget Tool Reference', () => {
-	const prompt = createArchitectAgent('test-model').config.prompt;
-
-	test('Available Tools includes quality_budget', () => {
+	test('quality_budget is in Available Tools', () => {
 		const toolsSection = prompt.match(/Available Tools:[^`]*$/m)?.[0] || '';
 		expect(toolsSection).toContain('quality_budget');
 	});
 });
 
-describe('ARCHITECT QA GATE: quality_budget Anti-Bypass', () => {
+describe('ARCHITECT QA GATE: Full Sequence Verification (v6.10)', () => {
 	const prompt = createArchitectAgent('test-model').config.prompt;
 
-	test('quality_budget is mandatory (not skippable)', () => {
-		// Check in Rule 7 sequence
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		
-		// Must appear in the sequence
-		expect(qaGate).toContain('quality_budget');
-		
-		// Check detailed branching in Phase 5
+	test('Phase 5 maintains correct step ordering (v6.10)', () => {
 		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
-		);
-		
-		const qualityStep = phase5Section.substring(
-			phase5Section.indexOf('5k.'),
-			phase5Section.indexOf('5l.')
-		);
-		
-		// Cannot be bypassed - must have two distinct paths
-		expect(qualityStep).toContain('QUALITY VIOLATIONS');
-		expect(qualityStep).toContain('WITHIN BUDGET');
-	});
-
-	test('quality_budget ordering cannot be bypassed by reviewer coming earlier', () => {
-		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
-		
-		// Get positions
-		const buildPos = qaGate.indexOf('build_check');
-		const qualityPos = qaGate.indexOf('quality_budget');
-		const reviewerPos = qaGate.indexOf('reviewer');
-		
-		// quality_budget MUST be between build_check and reviewer
-		expect(buildPos).toBeLessThan(qualityPos);
-		expect(qualityPos).toBeLessThan(reviewerPos);
-	});
-
-	test('build_check proceeds to quality_budget (not directly to reviewer)', () => {
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
-		);
-		
-		// 5j is build_check
-		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
-		);
-		
-		// build_check should proceed to quality_budget, not to reviewer
-		expect(buildStep).toContain('proceed to quality_budget');
-		expect(buildStep).not.toContain('proceed to reviewer');
-	});
-
-	test('quality_budget gating is distinct from build_check gating', () => {
-		// quality_budget has different conditions than build_check
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
-		);
-		
-		// build_check step (5j)
-		const buildStep = phase5Section.substring(
-			phase5Section.indexOf('5j.'),
-			phase5Section.indexOf('5k.')
-		);
-		
-		// quality_budget step (5k)
-		const qualityStep = phase5Section.substring(
-			phase5Section.indexOf('5k.'),
-			phase5Section.indexOf('5l.')
-		);
-		
-		// build_check: BUILD FAILURES → return to coder (three paths)
-		expect(buildStep).toContain('BUILD FAILURES');
-		expect(buildStep).toContain('SKIPPED (no toolchain)');
-		expect(buildStep).toContain('PASSED');
-		
-		// quality_budget: QUALITY VIOLATIONS vs WITHIN BUDGET (two paths)
-		expect(qualityStep).toContain('QUALITY VIOLATIONS');
-		expect(qualityStep).toContain('WITHIN BUDGET');
-	});
-});
-
-describe('ARCHITECT QA GATE: Full Sequence Verification', () => {
-	const prompt = createArchitectAgent('test-model').config.prompt;
-
-	test('Phase 5 maintains correct step ordering', () => {
-		const phase5Section = prompt.substring(
-			prompt.indexOf('### Phase 5:'),
-			prompt.indexOf('### Phase 6:')
+			prompt.indexOf('### MODE: EXECUTE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
 		);
 		
 		// Verify each step exists and is ordered correctly
+		// v6.10 step map:
+		// 5a = UI DESIGN GATE (conditional)
+		// 5b = coder
+		// 5c = diff
+		// 5d = syntax_check
+		// 5e = placeholder_scan
+		// 5f = imports
+		// 5g = lint
+		// 5h = build_check
+		// 5i = pre_check_batch (lint:check + secretscan + sast_scan + quality_budget)
+		// 5j = reviewer
+		// 5k = Security gate
+		// 5l = test_engineer - Verification tests
+		// 5m = test_engineer - Adversarial tests
+		// 5n = COVERAGE CHECK
+		// 5o = Update plan.md
+		
 		const step5c = phase5Section.indexOf('5c.');
 		const step5d = phase5Section.indexOf('5d.');
 		const step5e = phase5Section.indexOf('5e.');
@@ -987,24 +894,40 @@ describe('ARCHITECT QA GATE: Full Sequence Verification', () => {
 		expect(step5d).toBeLessThan(step5e); // syntax_check < placeholder_scan
 		expect(step5e).toBeLessThan(step5f); // placeholder_scan < imports
 		expect(step5f).toBeLessThan(step5g); // imports < lint
-		expect(step5g).toBeLessThan(step5h); // lint < secretscan
-		expect(step5h).toBeLessThan(step5i); // secretscan < sast_scan
-		expect(step5i).toBeLessThan(step5j); // sast_scan < build_check
-		expect(step5j).toBeLessThan(step5k); // build_check < reviewer
-		expect(step5k).toBeLessThan(step5l); // reviewer < security
-		expect(step5l).toBeLessThan(step5m); // security < verification
+		expect(step5g).toBeLessThan(step5h); // lint < build_check
+		expect(step5h).toBeLessThan(step5i); // build_check < pre_check_batch
+		expect(step5i).toBeLessThan(step5j); // pre_check_batch < reviewer
+		expect(step5j).toBeLessThan(step5k); // reviewer < security
+		expect(step5k).toBeLessThan(step5l); // security < verification
+		expect(step5l).toBeLessThan(step5m); // verification < adversarial
 	});
 
-	test('Full QA sequence in Rule 7 includes build_check', () => {
+	test('Full QA sequence in Rule 7 includes pre_check_batch', () => {
 		const qaGate = prompt.match(/\*\*MANDATORY QA GATE[^`]*/)?.[0] || '';
 		
-		expect(qaGate).toContain('coder → diff → syntax_check → placeholder_scan → imports');
+		// Verify the sequence contains all required tools
+		expect(qaGate).toContain('coder → diff → syntax_check → placeholder_scan');
 		expect(qaGate).toContain('lint');
-		expect(qaGate).toContain('secretscan');
-		expect(qaGate).toContain('sast_scan');
 		expect(qaGate).toContain('build_check');
+		expect(qaGate).toContain('pre_check_batch');
 		expect(qaGate).toContain('reviewer');
+		expect(qaGate).toContain('security review');
 		expect(qaGate).toContain('verification tests');
 		expect(qaGate).toContain('adversarial tests');
+	});
+
+	test('Rule 7 sequence mentions lint:check as part of pre_check_batch', () => {
+		// Look for lint:check in the pre_check_batch description
+		// The prompt contains "lint:check (code quality verification)" after pre_check_batch
+		expect(prompt).toContain('lint:check');
+	});
+
+	test('imports is in detailed Rule 7 steps', () => {
+		// The detailed steps after the short sequence should mention imports
+		const rule7Section = prompt.substring(
+			prompt.indexOf('MANDATORY QA GATE'),
+			prompt.indexOf('### MODE: PHASE-WRAP')
+		);
+		expect(rule7Section).toContain('imports');
 	});
 });

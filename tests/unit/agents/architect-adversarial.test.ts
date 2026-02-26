@@ -159,8 +159,8 @@ describe('createArchitectAgent - Adversarial Attack Vectors', () => {
 		 *   - ≥70%: include 70% as passing threshold
 		 */
 		it('Phase 5h uses strictly less-than: "< 70%" (not ≤, not >, not ≥)', () => {
-			const phase5Start = prompt.indexOf('### Phase 5: Execute');
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase5Start = prompt.indexOf('### MODE: EXECUTE');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const phase5Section = prompt.slice(phase5Start, phase6Start);
 			
 			// Must contain the exact "< 70%" phrasing
@@ -168,8 +168,8 @@ describe('createArchitectAgent - Adversarial Attack Vectors', () => {
 		});
 
 		it('Coverage check does NOT use "≤70%" or "<=70%"', () => {
-			const phase5Start = prompt.indexOf('### Phase 5: Execute');
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase5Start = prompt.indexOf('### MODE: EXECUTE');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const phase5Section = prompt.slice(phase5Start, phase6Start);
 			
 			expect(phase5Section).not.toContain('≤70%');
@@ -177,8 +177,8 @@ describe('createArchitectAgent - Adversarial Attack Vectors', () => {
 		});
 
 		it('Coverage check does NOT use ">70%" or "≥70%" (wrong direction)', () => {
-			const phase5Start = prompt.indexOf('### Phase 5: Execute');
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase5Start = prompt.indexOf('### MODE: EXECUTE');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const phase5Section = prompt.slice(phase5Start, phase6Start);
 			
 			expect(phase5Section).not.toContain('>70%');
@@ -187,8 +187,8 @@ describe('createArchitectAgent - Adversarial Attack Vectors', () => {
 
 		it('Coverage 70% means additional test pass is triggered BELOW 70%', () => {
 			// "coverage < 70%" means: 69% triggers, 70% does NOT trigger, 71% does NOT trigger
-			const phase5Start = prompt.indexOf('### Phase 5: Execute');
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase5Start = prompt.indexOf('### MODE: EXECUTE');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const phase5Section = prompt.slice(phase5Start, phase6Start);
 			
 			expect(phase5Section).toContain('coverage < 70%');
@@ -209,36 +209,36 @@ describe('createArchitectAgent - Adversarial Attack Vectors', () => {
 		 *   - Audit trail is incomplete
 		 */
 		it('Phase 6 step 4 is "Write retrospective evidence"', () => {
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const blockersStart = prompt.indexOf('### Blockers');
 			const phase6Section = prompt.slice(phase6Start, blockersStart);
 			
 			expect(phase6Section).toContain('4. Write retrospective evidence');
 		});
 
-		it('Phase 6 step 5 is "Summarize to user"', () => {
-			const phase6Start = prompt.indexOf('### Phase 6:');
+		it('Phase 6 step 6 is "Summarize to user"', () => {
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const blockersStart = prompt.indexOf('### Blockers');
 			const phase6Section = prompt.slice(phase6Start, blockersStart);
 			
-			expect(phase6Section).toContain('5. Summarize to user');
+			expect(phase6Section).toContain('6. Summarize to user');
 		});
 
-		it('Step 4 appears BEFORE step 5 in Phase 6 (correct ordering)', () => {
-			const phase6Start = prompt.indexOf('### Phase 6:');
+		it('Step 4 appears BEFORE step 6 in Phase 6 (correct ordering)', () => {
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const blockersStart = prompt.indexOf('### Blockers');
 			const phase6Section = prompt.slice(phase6Start, blockersStart);
 			
 			const step4Index = phase6Section.indexOf('4. Write retrospective');
-			const step5Index = phase6Section.indexOf('5. Summarize');
+			const step6Index = phase6Section.indexOf('6. Summarize');
 			
 			expect(step4Index).toBeGreaterThan(-1);
-			expect(step5Index).toBeGreaterThan(-1);
-			expect(step4Index).toBeLessThan(step5Index);
+			expect(step6Index).toBeGreaterThan(-1);
+			expect(step4Index).toBeLessThan(step6Index);
 		});
 
 		it('Evidence write happens before any user-facing summary', () => {
-			const phase6Start = prompt.indexOf('### Phase 6:');
+			const phase6Start = prompt.indexOf('### MODE: PHASE-WRAP');
 			const blockersStart = prompt.indexOf('### Blockers');
 			const phase6Section = prompt.slice(phase6Start, blockersStart);
 			

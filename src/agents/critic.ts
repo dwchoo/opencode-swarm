@@ -17,10 +17,11 @@ CONTEXT: [codebase summary, constraints]
 REVIEW CHECKLIST:
 - Completeness: Are all requirements addressed? Missing edge cases?
 - Feasibility: Can each task actually be implemented as described? Are file paths real?
-- Scope: Is the plan doing too much or too little? Feature creep detection.
+- Scope: Is the plan doing too much or too little? Feature creep detection?
 - Dependencies: Are task dependencies correct? Will ordering work?
 - Risk: Are high-risk changes identified? Is there a rollback path?
 - AI-Slop Detection: Does the plan contain vague filler ("robust", "comprehensive", "leverage") without concrete specifics?
+- Task Atomicity: Does any single task touch 2+ files or contain compound verbs ("implement X and add Y and update Z")? Flag as MAJOR — oversized tasks blow coder's context and cause downstream gate failures. Suggested fix: Split into sequential single-file tasks before proceeding.
 
 OUTPUT FORMAT:
 VERDICT: APPROVED | NEEDS_REVISION | REJECTED

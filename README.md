@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="https://img.shields.io/badge/version-6.10.0-blue" alt="Version">
+   <img src="https://img.shields.io/badge/version-6.11.0-blue" alt="Version">
    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
    <img src="https://img.shields.io/badge/opencode-plugin-purple" alt="OpenCode Plugin">
    <img src="https://img.shields.io/badge/agents-9-orange" alt="Agents">
@@ -108,8 +108,11 @@ OpenCode Swarm:
 │                                                                          │
 │  @coder (one task, full context)                                         │
 │       ↓                                                                  │
-│  diff tool  →  imports tool  →  lint fix  →  lint check  →  secretscan  │
-│  (contract change detection)   (AST-based)  (auto-fix)   (entropy scan) │
+│  diff → syntax_check → placeholder_scan → imports → lint fix            │
+│  (contract detection) (parse validation) (anti-slop) (AST-based)         │
+│       ↓                                                                  │
+│  build_check → pre_check_batch (4 parallel: lint:check, secretscan,      │
+│  (compile verify)        sast_scan, quality_budget)                      │
 │       ↓                                                                  │
 │  @reviewer (correctness pass)                                            │
 │       ↓ APPROVED                                                         │
@@ -119,9 +122,12 @@ OpenCode Swarm:
 │       ↓ PASS                                                             │
 │  @test_engineer (adversarial tests — boundary violations, injections)    │
 │       ↓ PASS                                                             │
+│  ⛔ HARD STOP: Pre-commit checklist (4 items required, no override)       │
+│       ↓ COMPLETE                                                         │
 │  plan.md → [x] Task complete                                             │
 │                                                                          │
-│  Any gate fails → back to @coder with structured rejection reason        │
+│  Any gate fails → retry with failure count + structured rejection        │
+│  Max 5 retries → escalate to user                                        │
 └──────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -568,13 +574,95 @@ Enable/disable parallel pre-check via `.opencode/swarm.json`:
 
 Set to `false` to run gates sequentially (useful for debugging or resource-constrained environments).
 
-### Updated Phase 5 QA Sequence (v6.10.0)
+### Updated Phase 5 QA Sequence (v6.11.0)
+
+Complete execution pipeline with MODE labels and observable outputs:
 
 ```
-coder → diff → syntax_check → placeholder_scan → imports → 
-lint fix → build_check → pre_check_batch (parallel) → 
-reviewer → security reviewer → test_engineer → coverage check
+MODE: EXECUTE (per task)
+│
+├── 5a. @coder implements (ONE task only)
+│   └── → REQUIRED: Print task start confirmation
+│
+├── 5b. diff + imports tools (contract + dependency analysis)
+│   └── → REQUIRED: Print change summary
+│
+├── 5c. syntax_check (parse validation)
+│   └── → REQUIRED: Print syntax status
+│
+├── 5d. placeholder_scan (anti-slop detection)
+│   └── → REQUIRED: Print placeholder scan results
+│
+├── 5e. lint fix → 5f. lint:check (inside pre_check_batch)
+│   └── → REQUIRED: Print lint status
+│
+├── 5g. build_check (compilation verification)
+│   └── → REQUIRED: Print build status
+│
+├── 5h. pre_check_batch (4 parallel gates)
+│   ├── lint:check (hard gate)
+│   ├── secretscan (hard gate)
+│   ├── sast_scan (hard gate)
+│   └── quality_budget (maintainability metrics)
+│   └── → REQUIRED: Print gates_passed status
+│
+├── 5i. @reviewer (correctness pass)
+│   └── → REQUIRED: Print approval decision
+│
+├── 5j. @reviewer security-only pass (if security file)
+│   └── → REQUIRED: Print security approval
+│
+├── 5k. @test_engineer (verification tests + coverage)
+│   └── → REQUIRED: Print test results
+│
+├── 5l. @test_engineer (adversarial tests)
+│   └── → REQUIRED: Print adversarial test results
+│
+├── 5m. ⛔ HARD STOP: Pre-commit checklist
+│   ├── [ ] All QA gates passed (no overrides)
+│   ├── [ ] Reviewer approval documented
+│   ├── [ ] Tests pass with evidence
+│   └── [ ] No security findings
+│   └── → REQUIRED: Print checklist completion
+│
+└── 5n. TASK COMPLETION CHECKLIST (emit before marking complete)
+    ├── Evidence written to .swarm/evidence/{taskId}/
+    ├── plan.md updated with [x] task complete
+    └── → REQUIRED: Print completion confirmation
 ```
+
+**MODE Labels** (v6.11): Architect workflow uses MODE labels internally:
+- `MODE: RESUME` — Resume detection
+- `MODE: CLARIFY` — Requirement clarification
+- `MODE: DISCOVER` — Codebase exploration
+- `MODE: CONSULT` — SME consultation
+- `MODE: PLAN` — Plan creation
+- `MODE: CRITIC-GATE` — Plan review checkpoint
+- `MODE: EXECUTE` — Task implementation
+- `MODE: PHASE-WRAP` — Phase completion
+
+**NAMESPACE RULE**: MODE labels refer to architect workflow phases. Project plan phases (in plan.md) remain as "Phase N".
+
+**Retry Protocol** (v6.11): On failure, emit structured rejection:
+```
+RETRY #{count}/5
+FAILED GATE: {gate_name}
+REASON: {specific failure}
+REQUIRED FIX: {actionable instruction}
+RESUME AT: {step_5x}
+```
+
+**Anti-Exemption Rules** (v6.11): The following rationalizations are explicitly blocked:
+- "It's a simple change"
+- "Just updating docs"
+- "Only a config tweak"
+- "Hotfix, no time for QA"
+- "The tests pass locally"
+- "I'll clean it up later"
+- "No logic changes"
+- "Already reviewed the pattern"
+
+**Pre-Commit Rule** (v6.11): All 4 checkboxes required before commit. No override. A commit without completed QA gate is a workflow violation.
 
 ### Rollback
 

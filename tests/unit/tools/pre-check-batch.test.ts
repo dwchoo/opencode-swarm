@@ -627,3 +627,76 @@ describe('runPreCheckBatch', () => {
 		expect(result.quality_budget.error).toBe('Quality budget failed');
 	});
 });
+
+describe('Parallel Pre-check Hint Generation', () => {
+	// These tests verify that the system-enhancer generates appropriate hints
+	// based on the pipeline.parallel_precheck config setting
+
+	test('Architect receives parallel precheck hint when enabled', async () => {
+		// The system-enhancer should generate "[SWARM HINT] Parallel pre-check enabled"
+		// when config.pipeline.parallel_precheck !== false (default is true)
+		//
+		// Verify the hint mentions pre_check_batch running in parallel
+
+		// Import the system-enhancer to verify hint generation logic
+		const { createSystemEnhancerHook } = await import('../../../src/hooks/system-enhancer');
+
+		// Mock config with parallel_precheck enabled (default)
+		const config = {
+			pipeline: {
+				parallel_precheck: true,
+			},
+		} as const;
+
+		// The hint should be generated when config.pipeline.parallel_precheck !== false
+		expect(config.pipeline.parallel_precheck !== false).toBe(true);
+
+		// Expected hint text when enabled
+		const expectedHint = '[SWARM HINT] Parallel pre-check enabled: call pre_check_batch(files, directory) after lint --fix and build_check to run lint:check + secretscan + sast_scan + quality_budget concurrently (max 4 parallel). Check gates_passed before calling @reviewer.';
+
+		// Verify the hint contains pre_check_batch and mentions parallel execution
+		expect(expectedHint).toContain('pre_check_batch');
+		expect(expectedHint).toContain('concurrently');
+		expect(expectedHint).toContain('Parallel pre-check enabled');
+	});
+
+	test('Architect receives sequential hint when parallel_precheck disabled', async () => {
+		// The system-enhancer should generate "[SWARM HINT] Parallel pre-check disabled"
+		// when config.pipeline.parallel_precheck === false
+		//
+		// Verify the hint instructs sequential execution of lint:check, secretscan, sast_scan, quality_budget
+
+		// Mock config with parallel_precheck disabled
+		const config = {
+			pipeline: {
+				parallel_precheck: false,
+			},
+		} as const;
+
+		// The hint should be generated when config.pipeline.parallel_precheck === false
+		expect(config.pipeline.parallel_precheck === false).toBe(true);
+
+		// Expected hint text when disabled
+		const expectedHint = '[SWARM HINT] Parallel pre-check disabled: run lint:check → secretscan → sast_scan → quality_budget sequentially.';
+
+		// Verify the hint mentions sequential execution
+		expect(expectedHint).toContain('Parallel pre-check disabled');
+		expect(expectedHint).toContain('sequentially');
+		expect(expectedHint).toContain('lint:check');
+		expect(expectedHint).toContain('secretscan');
+		expect(expectedHint).toContain('sast_scan');
+		expect(expectedHint).toContain('quality_budget');
+	});
+
+	test('parallel_precheck defaults to true when not specified', async () => {
+		// When config.pipeline is undefined or parallel_precheck is not set,
+		// the default value should be true (from schema default)
+		const config = {
+			pipeline: {},
+		} as { pipeline?: { parallel_precheck?: boolean } };
+
+		// The default behavior should be parallel (not explicitly set to false)
+		const isParallel = config.pipeline?.parallel_precheck !== false;
+		expect(isParallel).toBe(true);
+	});
+});

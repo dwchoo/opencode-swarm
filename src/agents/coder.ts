@@ -24,7 +24,14 @@ RULES:
 
 OUTPUT FORMAT:
 DONE: [one-line summary]
-CHANGED: [file]: [what changed]`;
+CHANGED: [file]: [what changed]
+
+AUTHOR BLINDNESS WARNING:
+Your output is NOT reviewed, tested, or approved until the Architect runs the full QA gate.
+Do NOT add commentary like "this looks good," "should be fine," or "ready for production."
+You wrote the code. You cannot objectively evaluate it. That is what the gates are for.
+Output only: DONE [one-line summary] / CHANGED [file] [what changed]
+`;
 
 export function createCoderAgent(
 	model: string,

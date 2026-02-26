@@ -54,7 +54,7 @@ Swarm enforces discipline:
 ### Designer: The Blueprint
 - UI/UX specification agent
 - Generates component scaffolds and design tokens before coding begins on UI-heavy tasks
-- Runs in Phase 5 before Coder (Rule 9)
+- Runs in MODE: EXECUTE before Coder (Rule 9)
 
 ### SME: The Advisor
 - Single open-domain expert (any domain: security, ios, rust, kubernetes, etc.)
@@ -149,14 +149,16 @@ Create/Update .swarm/plan.md:
 ### Phase 4.5: Critic Gate
 
 ```
+MODE: CRITIC-GATE
+
 @critic reviews plan
     │
-    ├── APPROVED → Proceed to Phase 5
+    ├── APPROVED → Proceed to MODE: EXECUTE
     ├── NEEDS_REVISION → Revise plan, resubmit (max 2 cycles)
     └── REJECTED → Escalate to user
 ```
 
-### Phase 5: Execute
+### MODE: EXECUTE
 
 ```
 For each task in current phase:
@@ -164,54 +166,38 @@ For each task in current phase:
     ├── Check dependencies complete
     │   └── If blocked → Skip, mark [BLOCKED]
     │
-    ├── 5a. @coder implements (ONE task)
-    │       └── Wait for completion
+    ├── 5a. @coder implements (ONE task only)
+    │       └── → REQUIRED: Print task start confirmation
     │
     ├── 5b. diff + imports tools analyze changes
     │       ├── Detect contract changes (exports, interfaces, types)
     │       ├── Track import dependencies across files
-    │       └── If contracts changed → @explorer runs impact analysis
-
-    ├── 5c. @coder auto-fixes lint issues
-    │       ├── Run `lint` tool with fix mode
-    │       └── Commit fixes to implementation
-
-    ├── 5d. lint check verifies code quality
-    │       ├── Run `lint` tool without fix mode
-    │       ├── Check for errors, warnings, style violations
-    │       └── If issues found → Retry from 5c
-
-    ├── 5e. secretscan scans for sensitive data
-    │       ├── Run `secretscan` tool across changed files
-    │       ├── Check for API keys, tokens, passwords
-    │       └── If secrets found → Fix before review
-
-    ├── 5f. syntax_check validates code syntax (v6.9.0)
+    │       └── → REQUIRED: Print change summary
+    │
+    ├── 5c. syntax_check validates code syntax (v6.9.0)
     │       ├── Tree-sitter parse validation for 9+ languages
     │       ├── Catches syntax errors before review
-    │       └── If syntax errors → Fix before review
-
-    ├── 5g. placeholder_scan detects incomplete code (v6.9.0)
+    │       └── → REQUIRED: Print syntax status
+    │
+    ├── 5d. placeholder_scan detects incomplete code (v6.9.0)
     │       ├── Scans for TODO/FIXME comments
     │       ├── Detects placeholder text and stub implementations
-    │       └── If placeholders found → Complete implementation
-
-    ├── 5h. sast_scan runs static security analysis (v6.9.0)
-    │       ├── 63+ security rules across 9 languages
-    │       ├── OWASP-based detection patterns
-    │       └── If vulnerabilities found → Fix before review
-
-    ├── 5i. sbom_generate creates dependency inventory (v6.9.0)
-    │       ├── CycloneDX SBOM from manifests/lock files
-    │       ├── Tracks 8 ecosystem dependencies
-    │       └── Archives for security auditing
-
-    ├── 5j. build_check verifies compilation (v6.9.0)
+    │       └── → REQUIRED: Print placeholder scan results
+    │
+    ├── 5e. lint fix → lint:check (auto-fix then verify)
+    │       ├── Run `lint` tool with fix mode, then check mode
+    │       └── → REQUIRED: Print lint status
+    │
+    ├── 5f. imports audit analyzes dependencies (AST-based)
+    │       ├── Track import dependencies across files
+    │       └── → REQUIRED: Print import analysis
+    │
+    ├── 5g. build_check verifies compilation (v6.9.0)
     │       ├── Runs repo-native build/typecheck commands
     │       ├── Validates code compiles correctly
-    │       └── If build fails → Fix before review
-
-    ├── 5k. pre_check_batch runs parallel verification (v6.10.0)
+    │       └── → REQUIRED: Print build status
+    │
+    ├── 5h. pre_check_batch runs parallel verification (v6.10.0)
     │       ├── Runs 4 tools in parallel with p-limit (max 4 concurrent):
     │       │   ├── lint:check (code quality verification - hard gate)
     │       │   ├── secretscan (secret detection - hard gate)
@@ -219,30 +205,45 @@ For each task in current phase:
     │       │   └── quality_budget (maintainability metrics)
     │       ├── Returns unified result with gates_passed boolean
     │       ├── If gates_passed === false → Return to coder with specific failures
-    │       └── If gates_passed === true → Proceed to reviewer
+    │       └── → REQUIRED: Print gates_passed status
 
-    ├── 5l. @reviewer reviews (correctness, edge-cases, performance)
+    ├── 5i. @reviewer reviews (correctness, edge-cases, performance)
     │       ├── APPROVED → Continue
     │       └── REJECTED → Retry from 5a (max 5)
+    │       └── → REQUIRED: Print approval decision
     │
-    ├── 5m. @reviewer security-only pass (if file matches security globs
+    ├── 5j. @reviewer security-only pass (if file matches security globs
     │       or coder output contains security keywords)
     │       ├── Security globs: auth, crypto, session, token, middleware, api, security
-    │       └── Uses OWASP Top 10 2021 categories
+    │       ├── Uses OWASP Top 10 2021 categories
+    │       └── → REQUIRED: Print security approval
     │
-    ├── 5n. @test_engineer generates AND runs verification tests
+    ├── 5k. @test_engineer generates AND runs verification tests
     │       ├── PASS → Continue
-    │       └── FAIL → Send failures to @coder, retry from 5c
+    │       └── FAIL → Send failures to @coder, retry from 5a with RETRY protocol
+    │       └── → REQUIRED: Print test results
     │
-    ├── 5o. @test_engineer adversarial testing pass
+    ├── 5l. @test_engineer adversarial testing pass
     │       ├── Attack vectors, boundary violations, injection attempts
     │       ├── PASS → Continue
-    │       └── FAIL → Send failures to @coder, retry from 5c
+    │       └── FAIL → Send failures to @coder, retry from 5a with RETRY protocol
+    │       └── → REQUIRED: Print adversarial test results
     │
-    └── 5p. Update plan.md [x] complete (only after ALL gates pass)
+    ├── 5m. ⛔ HARD STOP: Pre-commit checklist (v6.11.0)
+    │       ├── [ ] All QA gates passed (lint:check, secretscan, sast_scan)
+    │       ├── [ ] Reviewer approval documented
+    │       ├── [ ] Tests pass with evidence
+    │       └── [ ] No security findings
+    │       └── → REQUIRED: Print checklist completion
+    │       **No override. A commit without completed QA gate is a workflow violation.**
+    │
+    └── 5n. TASK COMPLETION CHECKLIST (v6.11.0)
+            ├── Evidence written to .swarm/evidence/{taskId}/
+            ├── plan.md updated with [x] task complete
+            └── → REQUIRED: Print completion confirmation
 ```
 
-### Phase 6: Phase Complete
+### MODE: PHASE-WRAP
 
 ```
 All tasks in phase done
@@ -254,6 +255,93 @@ All tasks in phase done
     │
     └── Ask user: "Ready for Phase [N+1]?"
 ```
+
+---
+
+## MODE Labels (v6.11)
+
+The Architect workflow uses explicit **MODE** labels internally to distinguish architect execution phases from project plan phases:
+
+| MODE | Description |
+|------|-------------|
+| `MODE: RESUME` | Detect and restore previous session state |
+| `MODE: CLARIFY` | Ask clarifying questions for ambiguous requirements |
+| `MODE: DISCOVER` | Explore codebase structure and patterns |
+| `MODE: CONSULT` | Consult SMEs for domain guidance |
+| `MODE: PLAN` | Create or update project plan |
+| `MODE: CRITIC-GATE` | Plan review checkpoint before execution |
+| `MODE: EXECUTE` | Task implementation with QA gates |
+| `MODE: PHASE-WRAP` | Phase completion and retrospective |
+
+**NAMESPACE RULE**: MODE labels refer to the architect's internal workflow phases. Project plan phases (in `.swarm/plan.md`) remain as "Phase N" to avoid confusion.
+
+### Observable Output (v6.11)
+
+All blocking steps require explicit printed output for visibility:
+
+```
+→ REQUIRED: Print {description}
+```
+
+This ensures:
+- Clear progress tracking through gates
+- Determinable failure points
+- Evidence of execution for debugging
+
+### Retry Protocol (v6.11)
+
+On gate failure, emit structured rejection:
+
+```
+RETRY #{count}/5
+FAILED GATE: {gate_name}
+REASON: {specific failure}
+REQUIRED FIX: {actionable instruction}
+RESUME AT: {step_5x}
+```
+
+**Failure Counting**: Track retry count, escalate to user after 5 failures.
+
+### Anti-Exemption Rules (v6.11)
+
+The following rationalization patterns are explicitly blocked:
+
+1. "It's a simple change"
+2. "Just updating docs"
+3. "Only a config tweak"
+4. "Hotfix, no time for QA"
+5. "The tests pass locally"
+6. "I'll clean it up later"
+7. "No logic changes"
+8. "Already reviewed the pattern"
+
+**Rule**: There are NO simple changes. There are NO exceptions to the QA gate sequence.
+
+### Pre-Commit Rule (v6.11)
+
+⛔ **HARD STOP** before marking any task complete:
+
+- [ ] All QA gates passed (no overrides)
+- [ ] Reviewer approval documented
+- [ ] Tests pass with evidence
+- [ ] No security findings
+
+There is no override. A commit without a completed QA gate is a workflow violation.
+
+### Task Granularity Rules (v6.11)
+
+Tasks classified by size with strict decomposition rules:
+
+| Size | Criteria | Decomposition Required |
+|------|----------|----------------------|
+| **SMALL** | 1 file, single verb, <2 hours | No |
+| **MEDIUM** | 1-2 files, compound action, <4 hours | No |
+| **LARGE** | >2 files OR compound verbs | **Yes** |
+
+**Task Atomicity Checks** (Critic validates):
+- Max 2 files per task (otherwise decompose)
+- No compound verbs ("and", "plus", "with") in task descriptions
+- Clear acceptance criteria required
 
 ---
 
