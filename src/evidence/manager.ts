@@ -1,13 +1,83 @@
 import { mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+	type BuildEvidence,
 	EVIDENCE_MAX_JSON_BYTES,
 	type Evidence,
 	type EvidenceBundle,
 	EvidenceBundleSchema,
+	EvidenceTypeSchema,
+	type PlaceholderEvidence,
+	type QualityBudgetEvidence,
+	type SastEvidence,
+	type SbomEvidence,
+	type SyntaxEvidence,
 } from '../config/evidence-schema';
 import { readSwarmFileAsync, validateSwarmPath } from '../hooks/utils';
 import { warn } from '../utils';
+
+/**
+ * All valid evidence types (12 total)
+ */
+export const VALID_EVIDENCE_TYPES = [
+	'review',
+	'test',
+	'diff',
+	'approval',
+	'note',
+	'retrospective',
+	'syntax',
+	'placeholder',
+	'sast',
+	'sbom',
+	'build',
+	'quality_budget',
+] as const;
+
+/**
+ * Check if a string is a valid evidence type.
+ * Returns true if the type is recognized, false otherwise.
+ */
+export function isValidEvidenceType(
+	type: string,
+): type is (typeof VALID_EVIDENCE_TYPES)[number] {
+	return VALID_EVIDENCE_TYPES.includes(
+		type as (typeof VALID_EVIDENCE_TYPES)[number],
+	);
+}
+
+/**
+ * Type guards for new evidence types
+ */
+export function isSyntaxEvidence(
+	evidence: Evidence,
+): evidence is SyntaxEvidence {
+	return evidence.type === 'syntax';
+}
+
+export function isPlaceholderEvidence(
+	evidence: Evidence,
+): evidence is PlaceholderEvidence {
+	return evidence.type === 'placeholder';
+}
+
+export function isSastEvidence(evidence: Evidence): evidence is SastEvidence {
+	return evidence.type === 'sast';
+}
+
+export function isSbomEvidence(evidence: Evidence): evidence is SbomEvidence {
+	return evidence.type === 'sbom';
+}
+
+export function isBuildEvidence(evidence: Evidence): evidence is BuildEvidence {
+	return evidence.type === 'build';
+}
+
+export function isQualityBudgetEvidence(
+	evidence: Evidence,
+): evidence is QualityBudgetEvidence {
+	return evidence.type === 'quality_budget';
+}
 
 /**
  * Task ID validation regex: alphanumeric, hyphens, and dots (for version-like IDs)

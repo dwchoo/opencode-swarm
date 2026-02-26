@@ -186,25 +186,56 @@ For each task in current phase:
     │       ├── Check for API keys, tokens, passwords
     │       └── If secrets found → Fix before review
 
-    ├── 5f. @reviewer reviews (correctness, edge-cases, performance)
+    ├── 5f. syntax_check validates code syntax (v6.9.0)
+    │       ├── Tree-sitter parse validation for 9+ languages
+    │       ├── Catches syntax errors before review
+    │       └── If syntax errors → Fix before review
+
+    ├── 5g. placeholder_scan detects incomplete code (v6.9.0)
+    │       ├── Scans for TODO/FIXME comments
+    │       ├── Detects placeholder text and stub implementations
+    │       └── If placeholders found → Complete implementation
+
+    ├── 5h. sast_scan runs static security analysis (v6.9.0)
+    │       ├── 63+ security rules across 9 languages
+    │       ├── OWASP-based detection patterns
+    │       └── If vulnerabilities found → Fix before review
+
+    ├── 5i. sbom_generate creates dependency inventory (v6.9.0)
+    │       ├── CycloneDX SBOM from manifests/lock files
+    │       ├── Tracks 8 ecosystem dependencies
+    │       └── Archives for security auditing
+
+    ├── 5j. build_check verifies compilation (v6.9.0)
+    │       ├── Runs repo-native build/typecheck commands
+    │       ├── Validates code compiles correctly
+    │       └── If build fails → Fix before review
+
+    ├── 5k. quality_budget enforces maintainability (v6.9.0)
+    │       ├── Checks complexity delta limits
+    │       ├── Validates API surface changes
+    │       ├── Enforces test-to-code ratio
+    │       └── If budgets exceeded → Refactor or adjust limits
+
+    ├── 5l. @reviewer reviews (correctness, edge-cases, performance)
     │       ├── APPROVED → Continue
     │       └── REJECTED → Retry from 5a (max 5)
     │
-    ├── 5g. @reviewer security-only pass (if file matches security globs
+    ├── 5m. @reviewer security-only pass (if file matches security globs
     │       or coder output contains security keywords)
     │       ├── Security globs: auth, crypto, session, token, middleware, api, security
     │       └── Uses OWASP Top 10 2021 categories
     │
-    ├── 5h. @test_engineer generates AND runs verification tests
+    ├── 5n. @test_engineer generates AND runs verification tests
     │       ├── PASS → Continue
     │       └── FAIL → Send failures to @coder, retry from 5c
     │
-    ├── 5i. @test_engineer adversarial testing pass
+    ├── 5o. @test_engineer adversarial testing pass
     │       ├── Attack vectors, boundary violations, injection attempts
     │       ├── PASS → Continue
     │       └── FAIL → Send failures to @coder, retry from 5c
     │
-    └── 5j. Update plan.md [x] complete (only after ALL gates pass)
+    └── 5p. Update plan.md [x] complete (only after ALL gates pass)
 ```
 
 ### Phase 6: Phase Complete
@@ -434,6 +465,21 @@ QA per task provides:
 - No bug accumulation
 - Clear task boundaries
 
+### v6.9.0 Quality Gates (6 New Gates)
+
+v6.9.0 "Quality & Anti-Slop Tooling" adds 6 automated gates to the pre-reviewer pipeline:
+
+| Gate | Purpose | Local-Only |
+|------|---------|------------|
+| `syntax_check` | Tree-sitter parse validation across 9+ languages | ✅ |
+| `placeholder_scan` | Anti-slop detection for TODO/FIXME/stubs | ✅ |
+| `sast_scan` | Static security analysis with 63+ rules | ✅ |
+| `sbom_generate` | CycloneDX SBOM generation for dependencies | ✅ |
+| `build_check` | Build/typecheck verification | ✅ |
+| `quality_budget` | Maintainability threshold enforcement | ✅ |
+
+**Local-Only Guarantee**: All v6.9.0 gates run without Docker, network connections, external APIs, or cloud services. Optional enhancement via Semgrep (if already on PATH).
+
 ---
 
 ## Why Persistent Files?
@@ -617,6 +663,119 @@ Configurable via `evidence` config:
 - `max_age_days`: Archive evidence older than N days (default: 90)
 - `max_bundles`: Maximum evidence bundles before auto-archive (default: 1000)
 - `auto_archive`: Enable automatic archiving (default: false)
+
+---
+
+## Quality Gates (v6.9.0)
+
+Six new automated gates enforce code quality before human review. All gates run locally without Docker or network dependencies.
+
+### Gate Overview
+
+| Gate | Function | Fail Action |
+|------|----------|-------------|
+| `syntax_check` | Tree-sitter parse validation | Return to coder for fix |
+| `placeholder_scan` | Detect TODO/FIXME/stubs | Return to coder to complete |
+| `sast_scan` | Static security analysis (63 rules) | Return to coder for fix |
+| `sbom_generate` | CycloneDX SBOM generation | Log for audit trail |
+| `build_check` | Build/typecheck verification | Return to coder for fix |
+| `quality_budget` | Maintainability enforcement | Return to coder or adjust limits |
+
+### syntax_check - Parse Validation
+
+Uses Tree-sitter grammars for 9+ languages:
+- TypeScript/JavaScript
+- Python
+- Rust
+- Go
+- Java
+- C/C++
+- Ruby
+- PHP
+- C#
+
+**Fail condition**: Parse errors, unclosed brackets, invalid syntax
+**Resolution**: Coder fixes syntax errors before review
+
+### placeholder_scan - Anti-Slop Detection
+
+Detects patterns indicating incomplete implementation:
+- `TODO`, `FIXME`, `XXX`, `HACK` comments
+- Placeholder strings (`placeholder`, `stub`, `implement me`)
+- Empty function bodies
+- Hardcoded dummy values
+
+**Fail condition**: Any placeholder pattern in changed files
+**Resolution**: Coder completes implementation before review
+
+### sast_scan - Static Security Analysis
+
+63+ security rules across 9 languages covering:
+- SQL injection vectors
+- Path traversal patterns
+- Hardcoded secrets
+- Insecure crypto usage
+- XSS vulnerabilities
+- Command injection
+
+**Offline operation**: Built-in rule engine, no external API calls
+**Optional enhancement**: Semgrep Tier B rules if available on PATH
+**Fail condition**: High/critical severity findings
+**Resolution**: Coder fixes security issues before review
+
+### sbom_generate - Dependency Tracking
+
+Generates CycloneDX SBOMs from manifest files:
+- `package.json` + `package-lock.json` (npm)
+- `requirements.txt`, `Pipfile`, `poetry.lock` (Python)
+- `Cargo.toml` + `Cargo.lock` (Rust)
+- `go.mod` + `go.sum` (Go)
+- `pom.xml`, `build.gradle` (Java)
+- `Gemfile.lock` (Ruby)
+- `composer.lock` (PHP)
+- `.csproj` + `packages.lock.json` (C#)
+
+**Output**: CycloneDX JSON format
+**Purpose**: Security auditing, license compliance
+**Fail condition**: None (informational gate)
+
+### build_check - Compilation Verification
+
+Runs repository-native build commands:
+- `npm run build` / `tsc --noEmit` (TypeScript)
+- `cargo build` / `cargo check` (Rust)
+- `go build` (Go)
+- `javac` / Maven / Gradle (Java)
+- `python -m py_compile` (Python)
+
+**Fail condition**: Build errors, type check failures
+**Resolution**: Coder fixes build errors before review
+
+### quality_budget - Maintainability Enforcement
+
+Enforces configurable thresholds on code changes:
+
+| Budget | Default | Description |
+|--------|---------|-------------|
+| `max_complexity_delta` | 5 | Maximum cyclomatic complexity increase |
+| `max_public_api_delta` | 10 | Maximum new public API surface |
+| `max_duplication_ratio` | 0.05 | Maximum code duplication ratio (5%) |
+| `min_test_to_code_ratio` | 0.3 | Minimum test-to-code ratio (30%) |
+
+**Fail condition**: Budget exceeded
+**Resolution**: Refactor code or adjust budget thresholds
+
+### Local-Only Guarantee
+
+All v6.9.0 quality gates:
+- ✅ Run entirely locally
+- ✅ No Docker containers required
+- ✅ No network connections
+- ✅ No external APIs
+- ✅ No cloud services
+
+Optional enhancement:
+- Semgrep CLI (if already installed on PATH)
 
 ---
 

@@ -3,12 +3,18 @@ export declare const EVIDENCE_MAX_JSON_BYTES: number;
 export declare const EVIDENCE_MAX_PATCH_BYTES: number;
 export declare const EVIDENCE_MAX_TASK_BYTES: number;
 export declare const EvidenceTypeSchema: z.ZodEnum<{
+    placeholder: "placeholder";
+    quality_budget: "quality_budget";
     review: "review";
     test: "test";
     diff: "diff";
     approval: "approval";
     note: "note";
     retrospective: "retrospective";
+    syntax: "syntax";
+    sast: "sast";
+    sbom: "sbom";
+    build: "build";
 }>;
 export type EvidenceType = z.infer<typeof EvidenceTypeSchema>;
 export declare const EvidenceVerdictSchema: z.ZodEnum<{
@@ -22,12 +28,18 @@ export type EvidenceVerdict = z.infer<typeof EvidenceVerdictSchema>;
 export declare const BaseEvidenceSchema: z.ZodObject<{
     task_id: z.ZodString;
     type: z.ZodEnum<{
+        placeholder: "placeholder";
+        quality_budget: "quality_budget";
         review: "review";
         test: "test";
         diff: "diff";
         approval: "approval";
         note: "note";
         retrospective: "retrospective";
+        syntax: "syntax";
+        sast: "sast";
+        sbom: "sbom";
+        build: "build";
     }>;
     timestamp: z.ZodString;
     agent: z.ZodString;
@@ -181,6 +193,162 @@ export declare const RetrospectiveEvidenceSchema: z.ZodObject<{
     lessons_learned: z.ZodDefault<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>;
 export type RetrospectiveEvidence = z.infer<typeof RetrospectiveEvidenceSchema>;
+export declare const SyntaxEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"syntax">;
+    files_checked: z.ZodNumber;
+    files_failed: z.ZodNumber;
+    skipped_count: z.ZodDefault<z.ZodNumber>;
+    files: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        language: z.ZodString;
+        ok: z.ZodBoolean;
+        errors: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            line: z.ZodNumber;
+            column: z.ZodNumber;
+            message: z.ZodString;
+        }, z.core.$strip>>>;
+        skipped_reason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
+export type SyntaxEvidence = z.infer<typeof SyntaxEvidenceSchema>;
+export declare const PlaceholderEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"placeholder">;
+    findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        line: z.ZodNumber;
+        kind: z.ZodEnum<{
+            string: "string";
+            comment: "comment";
+            function_body: "function_body";
+            other: "other";
+        }>;
+        excerpt: z.ZodString;
+        rule_id: z.ZodString;
+    }, z.core.$strip>>>;
+    files_scanned: z.ZodNumber;
+    files_with_findings: z.ZodNumber;
+    findings_count: z.ZodNumber;
+}, z.core.$strip>;
+export type PlaceholderEvidence = z.infer<typeof PlaceholderEvidenceSchema>;
+export declare const SastEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"sast">;
+    findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        rule_id: z.ZodString;
+        severity: z.ZodEnum<{
+            low: "low";
+            medium: "medium";
+            high: "high";
+            critical: "critical";
+        }>;
+        message: z.ZodString;
+        location: z.ZodObject<{
+            file: z.ZodString;
+            line: z.ZodNumber;
+            column: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        remediation: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+    engine: z.ZodEnum<{
+        tier_a: "tier_a";
+        "tier_a+tier_b": "tier_a+tier_b";
+    }>;
+    files_scanned: z.ZodNumber;
+    findings_count: z.ZodNumber;
+    findings_by_severity: z.ZodObject<{
+        critical: z.ZodNumber;
+        high: z.ZodNumber;
+        medium: z.ZodNumber;
+        low: z.ZodNumber;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export type SastEvidence = z.infer<typeof SastEvidenceSchema>;
+export declare const SbomEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"sbom">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>;
+export type SbomEvidence = z.infer<typeof SbomEvidenceSchema>;
+export declare const BuildEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"build">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>;
+export type BuildEvidence = z.infer<typeof BuildEvidenceSchema>;
+export declare const QualityBudgetEvidenceSchema: z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"quality_budget">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>;
+export type QualityBudgetEvidence = z.infer<typeof QualityBudgetEvidenceSchema>;
 export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
     task_id: z.ZodString;
     timestamp: z.ZodString;
@@ -308,6 +476,150 @@ export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
     }>;
     top_rejection_reasons: z.ZodDefault<z.ZodArray<z.ZodString>>;
     lessons_learned: z.ZodDefault<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"syntax">;
+    files_checked: z.ZodNumber;
+    files_failed: z.ZodNumber;
+    skipped_count: z.ZodDefault<z.ZodNumber>;
+    files: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        language: z.ZodString;
+        ok: z.ZodBoolean;
+        errors: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            line: z.ZodNumber;
+            column: z.ZodNumber;
+            message: z.ZodString;
+        }, z.core.$strip>>>;
+        skipped_reason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"placeholder">;
+    findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        line: z.ZodNumber;
+        kind: z.ZodEnum<{
+            string: "string";
+            comment: "comment";
+            function_body: "function_body";
+            other: "other";
+        }>;
+        excerpt: z.ZodString;
+        rule_id: z.ZodString;
+    }, z.core.$strip>>>;
+    files_scanned: z.ZodNumber;
+    files_with_findings: z.ZodNumber;
+    findings_count: z.ZodNumber;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"sast">;
+    findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        rule_id: z.ZodString;
+        severity: z.ZodEnum<{
+            low: "low";
+            medium: "medium";
+            high: "high";
+            critical: "critical";
+        }>;
+        message: z.ZodString;
+        location: z.ZodObject<{
+            file: z.ZodString;
+            line: z.ZodNumber;
+            column: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        remediation: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+    engine: z.ZodEnum<{
+        tier_a: "tier_a";
+        "tier_a+tier_b": "tier_a+tier_b";
+    }>;
+    files_scanned: z.ZodNumber;
+    findings_count: z.ZodNumber;
+    findings_by_severity: z.ZodObject<{
+        critical: z.ZodNumber;
+        high: z.ZodNumber;
+        medium: z.ZodNumber;
+        low: z.ZodNumber;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"sbom">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"build">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.core.$strip>, z.ZodObject<{
+    task_id: z.ZodString;
+    timestamp: z.ZodString;
+    agent: z.ZodString;
+    verdict: z.ZodEnum<{
+        pass: "pass";
+        fail: "fail";
+        approved: "approved";
+        rejected: "rejected";
+        info: "info";
+    }>;
+    summary: z.ZodString;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    type: z.ZodLiteral<"quality_budget">;
+    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.core.$strip>], "type">;
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export declare const EvidenceBundleSchema: z.ZodObject<{
@@ -440,6 +752,150 @@ export declare const EvidenceBundleSchema: z.ZodObject<{
         }>;
         top_rejection_reasons: z.ZodDefault<z.ZodArray<z.ZodString>>;
         lessons_learned: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"syntax">;
+        files_checked: z.ZodNumber;
+        files_failed: z.ZodNumber;
+        skipped_count: z.ZodDefault<z.ZodNumber>;
+        files: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            language: z.ZodString;
+            ok: z.ZodBoolean;
+            errors: z.ZodDefault<z.ZodArray<z.ZodObject<{
+                line: z.ZodNumber;
+                column: z.ZodNumber;
+                message: z.ZodString;
+            }, z.core.$strip>>>;
+            skipped_reason: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>>;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"placeholder">;
+        findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            line: z.ZodNumber;
+            kind: z.ZodEnum<{
+                string: "string";
+                comment: "comment";
+                function_body: "function_body";
+                other: "other";
+            }>;
+            excerpt: z.ZodString;
+            rule_id: z.ZodString;
+        }, z.core.$strip>>>;
+        files_scanned: z.ZodNumber;
+        files_with_findings: z.ZodNumber;
+        findings_count: z.ZodNumber;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"sast">;
+        findings: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            rule_id: z.ZodString;
+            severity: z.ZodEnum<{
+                low: "low";
+                medium: "medium";
+                high: "high";
+                critical: "critical";
+            }>;
+            message: z.ZodString;
+            location: z.ZodObject<{
+                file: z.ZodString;
+                line: z.ZodNumber;
+                column: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>;
+            remediation: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>>;
+        engine: z.ZodEnum<{
+            tier_a: "tier_a";
+            "tier_a+tier_b": "tier_a+tier_b";
+        }>;
+        files_scanned: z.ZodNumber;
+        findings_count: z.ZodNumber;
+        findings_by_severity: z.ZodObject<{
+            critical: z.ZodNumber;
+            high: z.ZodNumber;
+            medium: z.ZodNumber;
+            low: z.ZodNumber;
+        }, z.core.$strip>;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"sbom">;
+        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"build">;
+        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    }, z.core.$strip>, z.ZodObject<{
+        task_id: z.ZodString;
+        timestamp: z.ZodString;
+        agent: z.ZodString;
+        verdict: z.ZodEnum<{
+            pass: "pass";
+            fail: "fail";
+            approved: "approved";
+            rejected: "rejected";
+            info: "info";
+        }>;
+        summary: z.ZodString;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        type: z.ZodLiteral<"quality_budget">;
+        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     }, z.core.$strip>], "type">>>;
     created_at: z.ZodString;
     updated_at: z.ZodString;

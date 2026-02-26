@@ -1,7 +1,14 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import type { PluginConfig } from '../config';
 import type { EvidenceVerdict } from '../config/evidence-schema';
 import { saveEvidence } from '../evidence/manager';
-import { getParserForFile, isSupportedFile } from '../lang/registry';
+import {
+	getLanguageForExtension,
+	getParserForFile,
+	isSupportedFile,
+} from '../lang/registry';
 import type { Parser } from '../lang/runtime';
 
 export interface SyntaxCheckInput {
@@ -17,7 +24,7 @@ export interface SyntaxCheckFileResult {
 	path: string;
 	language: string;
 	ok: boolean;
-	errors?: Array<{
+	errors: Array<{
 		line: number;
 		column: number;
 		message: string;
@@ -59,6 +66,10 @@ function extractSyntaxErrors(
 	content: string,
 ): Array<{ line: number; column: number; message: string }> {
 	const tree = parser.parse(content);
+	if (!tree) {
+		return [];
+	}
+
 	const errors: Array<{ line: number; column: number; message: string }> = [];
 
 	// Walk the tree to find ERROR nodes
@@ -124,15 +135,20 @@ export async function syntaxCheck(
 
 	const results: SyntaxCheckFileResult[] = [];
 	let filesChecked = 0;
-	const filesFailed = 0;
+	let filesFailed = 0;
 	let skippedCount = 0;
 
 	for (const fileInfo of filesToCheck) {
 		const { path: filePath } = fileInfo;
+		const fullPath = path.isAbsolute(filePath)
+			? filePath
+			: path.join(directory, filePath);
+
 		const result: SyntaxCheckFileResult = {
 			path: filePath,
 			language: '',
 			ok: false,
+			errors: [],
 		};
 
 		try {
@@ -146,15 +162,17 @@ export async function syntaxCheck(
 				continue;
 			}
 
-			// Read file content (in real implementation, use actual file reader)
-			// For now, skip if we can't read
-			result.skipped_reason = 'file_read_not_implemented';
-			skippedCount++;
-			results.push(result);
+			// Read file content
+			let content: string;
+			try {
+				content = fs.readFileSync(fullPath, 'utf8');
+			} catch {
+				result.skipped_reason = 'file_read_error';
+				skippedCount++;
+				results.push(result);
+				continue;
+			}
 
-			/* TODO: Implement actual file reading
-			const content = await readFile(filePath, 'utf8');
-			
 			// Check file size
 			if (content.length > MAX_FILE_SIZE) {
 				result.skipped_reason = 'file_too_large';
@@ -171,12 +189,14 @@ export async function syntaxCheck(
 				continue;
 			}
 
-			// Extract language from parser
-			result.language = parser.getLanguage()?.name || 'unknown';
+			// Extract language from extension
+			const ext = path.extname(filePath).toLowerCase();
+			const langDef = getLanguageForExtension(ext);
+			result.language = langDef?.id || 'unknown';
 
 			// Parse and extract errors
 			const errors = extractSyntaxErrors(parser, content);
-			
+
 			if (errors.length > 0) {
 				result.ok = false;
 				result.errors = errors;
@@ -184,7 +204,6 @@ export async function syntaxCheck(
 			} else {
 				result.ok = true;
 			}
-			*/
 		} catch (error) {
 			result.skipped_reason =
 				error instanceof Error ? error.message : 'unknown_error';
@@ -210,12 +229,10 @@ export async function syntaxCheck(
 		agent: 'syntax_check',
 		verdict,
 		summary,
-		metadata: {
-			files_checked: filesChecked,
-			files_failed: filesFailed,
-			skipped_count: skippedCount,
-			files: results,
-		},
+		files_checked: filesChecked,
+		files_failed: filesFailed,
+		skipped_count: skippedCount,
+		files: results,
 	});
 
 	return {

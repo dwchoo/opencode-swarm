@@ -418,6 +418,66 @@ When you combine automatic triggers and background workers:
 
 ---
 
+### 14. Quality Gates (v6.9.0)
+
+**The temptation:** Trust that code is ready for human review just because it passes lint and tests.
+
+**The reality:** Human reviewers are expensive and slow. Sending them code with syntax errors, placeholder text, security vulnerabilities, or build failures wastes their time and delays the project. Reviewers should focus on architecture and edge cases, not basic quality checks.
+
+**Swarm's approach:** Six automated gates that catch quality issues before human review.
+
+**The six gates:**
+
+```
+Coder → syntax_check → placeholder_scan → sast_scan → sbom_generate → build_check → quality_budget → Reviewer
+```
+
+| Gate | Catches | Why Automated |
+|------|---------|---------------|
+| `syntax_check` | Parse errors, invalid syntax | Machine finds syntax errors instantly |
+| `placeholder_scan` | TODO/FIXME comments, stubs | Prevents shipping incomplete code |
+| `sast_scan` | Security vulnerabilities (63 rules) | Security review before human review |
+| `sbom_generate` | Dependency inventory | Audit trail for compliance |
+| `build_check` | Compilation errors, type failures | Build must pass before review |
+| `quality_budget` | Complexity, duplication, test coverage | Maintainability enforcement |
+
+**Why local-only:**
+
+| Cloud/External | Local-Only |
+|----------------|------------|
+| Network latency | Instant feedback |
+| Rate limits | Unlimited runs |
+| Privacy concerns | Code never leaves machine |
+| Subscription costs | Free forever |
+| CI dependency | Works offline |
+
+All v6.9.0 gates run without Docker, network, or external APIs. Optional Semgrep enhancement if already installed.
+
+**Why before reviewer:**
+
+```
+WRONG:  Coder → Reviewer → [rejects for syntax error] → Coder fixes
+        (Wastes reviewer time, delays feedback)
+
+RIGHT:  Coder → [syntax_check FAILS] → Coder fixes → Reviewer
+        (Reviewer only sees quality code)
+```
+
+**Budget enforcement rationale:**
+
+Codebases degrade gradually. Without budgets:
+- Complexity creeps up task by task
+- Public API surface expands unchecked  
+- Test coverage slowly declines
+- Duplication accumulates
+
+Quality budgets enforce thresholds per-task:
+- `max_complexity_delta: 5` — No single task adds more than 5 complexity points
+- `min_test_to_code_ratio: 0.3` — Every 10 lines of code needs 3 lines of tests
+- Architect can override with explicit decision tracked in context.md
+
+---
+
 ## The Result
 
 When you combine all these decisions:
@@ -435,5 +495,7 @@ When you combine all these decisions:
 | Silent failures | Documented attempts |
 | Implicit ordering | Explicit dependencies |
 | Manual-only workflow | **Background-first automation** (v6.7) |
+| Pre-reviewer lint only | **Six quality gates** before human review (v6.9.0) |
+| Cloud-based security scanning | **Local-only** SAST and SBOM generation (v6.9.0) |
 
 **The difference:** Code that actually works. And gets done efficiently.

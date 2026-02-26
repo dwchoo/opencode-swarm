@@ -775,6 +775,253 @@ All automation commands:
 
 ---
 
+## Quality Gates Configuration (v6.9.0)
+
+Six automated gates enforce code quality before human review. All gates run locally without Docker or network dependencies.
+
+### Basic Configuration
+
+Enable all gates with defaults:
+
+```json
+{
+  "gates": {
+    "syntax_check": { "enabled": true },
+    "placeholder_scan": { "enabled": true },
+    "sast_scan": { "enabled": true },
+    "sbom_generate": { "enabled": true },
+    "build_check": { "enabled": true },
+    "quality_budget": { "enabled": true }
+  }
+}
+```
+
+### Gate Reference
+
+| Gate | Description | Default | Fail Action |
+|------|-------------|---------|-------------|
+| `syntax_check` | Tree-sitter parse validation (9+ languages) | `true` | Block review |
+| `placeholder_scan` | Detect TODO/FIXME/stub implementations | `true` | Block review |
+| `sast_scan` | Static security analysis (63+ rules) | `true` | Block review |
+| `sbom_generate` | Generate CycloneDX SBOM | `true` | Continue (informational) |
+| `build_check` | Build/typecheck verification | `true` | Block review |
+| `quality_budget` | Enforce maintainability thresholds | `true` | Block review |
+
+### Per-Gate Configuration
+
+#### syntax_check
+
+```json
+{
+  "gates": {
+    "syntax_check": {
+      "enabled": true
+    }
+  }
+}
+```
+
+Supports TypeScript, JavaScript, Python, Rust, Go, Java, C/C++, Ruby, PHP, and C# via Tree-sitter grammars.
+
+#### placeholder_scan
+
+```json
+{
+  "gates": {
+    "placeholder_scan": {
+      "enabled": true,
+      "patterns": ["TODO", "FIXME", "XXX", "HACK"],
+      "block_on_empty_functions": true
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `patterns` | string[] | `["TODO", "FIXME", "XXX", "HACK"]` | Comment patterns to detect |
+| `block_on_empty_functions` | boolean | `true` | Fail on empty function bodies |
+
+#### sast_scan
+
+```json
+{
+  "gates": {
+    "sast_scan": {
+      "enabled": true,
+      "severity_threshold": "high",
+      "use_semgrep_if_available": false
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `severity_threshold` | string | `"high"` | Minimum severity to fail (`critical`, `high`, `medium`, `low`) |
+| `use_semgrep_if_available` | boolean | `false` | Use Semgrep Tier B rules if on PATH |
+
+**Local-Only Guarantee**: Built-in 63-rule engine runs without network. Semgrep is optional enhancement only.
+
+#### sbom_generate
+
+```json
+{
+  "gates": {
+    "sbom_generate": {
+      "enabled": true,
+      "output_format": "cyclonedx-json",
+      "include_dev_dependencies": false
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `output_format` | string | `"cyclonedx-json"` | SBOM format (CycloneDX JSON) |
+| `include_dev_dependencies` | boolean | `false` | Include dev/test dependencies |
+
+**Supported ecosystems**: npm, Python (pip/Pipfile/poetry), Rust (Cargo), Go, Java (Maven/Gradle), Ruby (Bundler), PHP (Composer), C# (NuGet)
+
+#### build_check
+
+```json
+{
+  "gates": {
+    "build_check": {
+      "enabled": true,
+      "commands": {
+        "typescript": ["npm", "run", "build"],
+        "python": ["python", "-m", "py_compile"]
+      }
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `commands` | object | Auto-detected | Per-language build commands |
+
+Auto-detected commands by ecosystem:
+- TypeScript: `npm run build` or `tsc --noEmit`
+- Rust: `cargo build` or `cargo check`
+- Go: `go build`
+- Java: `mvn compile` or `gradle build`
+- Python: `python -m py_compile`
+
+#### quality_budget
+
+```json
+{
+  "gates": {
+    "quality_budget": {
+      "enabled": true,
+      "max_complexity_delta": 5,
+      "max_public_api_delta": 10,
+      "max_duplication_ratio": 0.05,
+      "min_test_to_code_ratio": 0.3
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `max_complexity_delta` | number | `5` | Max cyclomatic complexity increase per task |
+| `max_public_api_delta` | number | `10` | Max new public API surface per task |
+| `max_duplication_ratio` | number | `0.05` | Max code duplication ratio (5%) |
+| `min_test_to_code_ratio` | number | `0.3` | Minimum test-to-code ratio (30%) |
+
+**Budget Enforcement**:
+- Exceeding any budget fails the gate
+- Architect can override per-task with explicit decision
+- Violations logged to context.md for tracking
+
+### Complete Configuration Example
+
+```json
+{
+  "agents": {
+    "architect": { "model": "anthropic/claude-opus-4-6" },
+    "coder": { "model": "minimax-coding-plan/MiniMax-M2.5" }
+  },
+  "gates": {
+    "syntax_check": {
+      "enabled": true
+    },
+    "placeholder_scan": {
+      "enabled": true,
+      "patterns": ["TODO", "FIXME", "XXX", "HACK", "NOTE"],
+      "block_on_empty_functions": true
+    },
+    "sast_scan": {
+      "enabled": true,
+      "severity_threshold": "high",
+      "use_semgrep_if_available": true
+    },
+    "sbom_generate": {
+      "enabled": true,
+      "include_dev_dependencies": false
+    },
+    "build_check": {
+      "enabled": true
+    },
+    "quality_budget": {
+      "enabled": true,
+      "max_complexity_delta": 3,
+      "max_public_api_delta": 5,
+      "max_duplication_ratio": 0.03,
+      "min_test_to_code_ratio": 0.4
+    }
+  },
+  "guardrails": {
+    "max_tool_calls": 200
+  }
+}
+```
+
+### Disabling Gates
+
+To disable specific gates:
+
+```json
+{
+  "gates": {
+    "sbom_generate": { "enabled": false },
+    "quality_budget": { "enabled": false }
+  }
+}
+```
+
+Or disable all gates:
+
+```json
+{
+  "gates": {
+    "syntax_check": { "enabled": false },
+    "placeholder_scan": { "enabled": false },
+    "sast_scan": { "enabled": false },
+    "sbom_generate": { "enabled": false },
+    "build_check": { "enabled": false },
+    "quality_budget": { "enabled": false }
+  }
+}
+```
+
+### Local-Only Guarantee
+
+All v6.9.0 quality gates run entirely locally:
+- ✅ No Docker containers
+- ✅ No network connections
+- ✅ No external APIs
+- ✅ No cloud services
+
+Optional enhancement: Semgrep CLI (if already on PATH, not required)
+
+---
+
 ## Slash Commands
 
 Legacy `/swarm ...` forms are hard-removed. Use canonical `/swarm-*` commands only.

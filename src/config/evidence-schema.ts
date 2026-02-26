@@ -150,31 +150,123 @@ export type SyntaxEvidence = z.infer<typeof SyntaxEvidenceSchema>;
 
 export const PlaceholderEvidenceSchema = BaseEvidenceSchema.extend({
 	type: z.literal('placeholder'),
-	details: z.record(z.string(), z.unknown()).optional(),
+	findings: z
+		.array(
+			z.object({
+				path: z.string(),
+				line: z.number().int(),
+				kind: z.enum(['comment', 'string', 'function_body', 'other']),
+				excerpt: z.string(),
+				rule_id: z.string(),
+			}),
+		)
+		.default([]),
+	files_scanned: z.number().int(),
+	files_with_findings: z.number().int(),
+	findings_count: z.number().int(),
 });
 export type PlaceholderEvidence = z.infer<typeof PlaceholderEvidenceSchema>;
 
 export const SastEvidenceSchema = BaseEvidenceSchema.extend({
 	type: z.literal('sast'),
-	details: z.record(z.string(), z.unknown()).optional(),
+	findings: z
+		.array(
+			z.object({
+				rule_id: z.string(),
+				severity: z.enum(['critical', 'high', 'medium', 'low']),
+				message: z.string(),
+				location: z.object({
+					file: z.string(),
+					line: z.number().int(),
+					column: z.number().int().optional(),
+				}),
+				remediation: z.string().optional(),
+			}),
+		)
+		.default([]),
+	engine: z.enum(['tier_a', 'tier_a+tier_b']),
+	files_scanned: z.number().int(),
+	findings_count: z.number().int(),
+	findings_by_severity: z.object({
+		critical: z.number().int(),
+		high: z.number().int(),
+		medium: z.number().int(),
+		low: z.number().int(),
+	}),
 });
 export type SastEvidence = z.infer<typeof SastEvidenceSchema>;
 
 export const SbomEvidenceSchema = BaseEvidenceSchema.extend({
 	type: z.literal('sbom'),
-	details: z.record(z.string(), z.unknown()).optional(),
+	components: z
+		.array(
+			z.object({
+				name: z.string(),
+				version: z.string(),
+				type: z.enum(['library', 'framework', 'application']),
+				purl: z.string().optional(),
+				license: z.string().optional(),
+			}),
+		)
+		.default([]),
+	metadata: z.object({
+		timestamp: z.string().datetime(),
+		tool: z.string(),
+		tool_version: z.string(),
+	}),
+	files: z.array(z.string()), // Manifest files used
+	components_count: z.number().int(),
+	output_path: z.string(), // Path to generated SBOM
 });
 export type SbomEvidence = z.infer<typeof SbomEvidenceSchema>;
 
 export const BuildEvidenceSchema = BaseEvidenceSchema.extend({
 	type: z.literal('build'),
-	details: z.record(z.string(), z.unknown()).optional(),
+	runs: z
+		.array(
+			z.object({
+				kind: z.enum(['build', 'typecheck', 'test']),
+				command: z.string(),
+				cwd: z.string(),
+				exit_code: z.number().int(),
+				duration_ms: z.number().int(),
+				stdout_tail: z.string(),
+				stderr_tail: z.string(),
+			}),
+		)
+		.default([]),
+	files_scanned: z.number().int(),
+	runs_count: z.number().int(),
+	failed_count: z.number().int(),
+	skipped_reason: z.string().optional(),
 });
 export type BuildEvidence = z.infer<typeof BuildEvidenceSchema>;
 
 export const QualityBudgetEvidenceSchema = BaseEvidenceSchema.extend({
 	type: z.literal('quality_budget'),
-	details: z.record(z.string(), z.unknown()).optional(),
+	metrics: z.object({
+		complexity_delta: z.number(),
+		public_api_delta: z.number(),
+		duplication_ratio: z.number(),
+		test_to_code_ratio: z.number(),
+	}),
+	thresholds: z.object({
+		max_complexity_delta: z.number(),
+		max_public_api_delta: z.number(),
+		max_duplication_ratio: z.number(),
+		min_test_to_code_ratio: z.number(),
+	}),
+	violations: z
+		.array(
+			z.object({
+				type: z.enum(['complexity', 'api', 'duplication', 'test_ratio']),
+				message: z.string(),
+				severity: z.enum(['error', 'warning']),
+				files: z.array(z.string()),
+			}),
+		)
+		.default([]),
+	files_analyzed: z.array(z.string()),
 });
 export type QualityBudgetEvidence = z.infer<typeof QualityBudgetEvidenceSchema>;
 

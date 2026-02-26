@@ -124,6 +124,41 @@ export declare const EvidenceConfigSchema: z.ZodObject<{
     auto_archive: z.ZodDefault<z.ZodBoolean>;
 }, z.core.$strip>;
 export type EvidenceConfig = z.infer<typeof EvidenceConfigSchema>;
+export declare const GateFeatureSchema: z.ZodObject<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
+}, z.core.$strip>;
+export type GateFeature = z.infer<typeof GateFeatureSchema>;
+export declare const PlaceholderScanConfigSchema: z.ZodObject<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
+    deny_patterns: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    allow_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    max_allowed_findings: z.ZodDefault<z.ZodNumber>;
+}, z.core.$strip>;
+export type PlaceholderScanConfig = z.infer<typeof PlaceholderScanConfigSchema>;
+export declare const GateConfigSchema: z.ZodObject<{
+    syntax_check: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    placeholder_scan: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+        deny_patterns: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        allow_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        max_allowed_findings: z.ZodDefault<z.ZodNumber>;
+    }, z.core.$strip>>;
+    sast_scan: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    sbom_generate: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    build_check: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+    quality_budget: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type GateConfig = z.infer<typeof GateConfigSchema>;
 export declare const SummaryConfigSchema: z.ZodObject<{
     enabled: z.ZodDefault<z.ZodBoolean>;
     threshold_bytes: z.ZodDefault<z.ZodNumber>;
@@ -310,6 +345,29 @@ export declare const PluginConfigSchema: z.ZodObject<{
         agent_awareness_max_chars: z.ZodDefault<z.ZodNumber>;
         delegation_gate: z.ZodDefault<z.ZodBoolean>;
         delegation_max_chars: z.ZodDefault<z.ZodNumber>;
+    }, z.core.$strip>>;
+    gates: z.ZodOptional<z.ZodObject<{
+        syntax_check: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>;
+        placeholder_scan: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+            deny_patterns: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            allow_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            max_allowed_findings: z.ZodDefault<z.ZodNumber>;
+        }, z.core.$strip>>;
+        sast_scan: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>;
+        sbom_generate: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>;
+        build_check: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>;
+        quality_budget: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodDefault<z.ZodBoolean>;
+        }, z.core.$strip>>;
     }, z.core.$strip>>;
     context_budget: z.ZodOptional<z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;

@@ -1,9 +1,9 @@
 <p align="center">
-   <img src="https://img.shields.io/badge/version-6.8.0-blue" alt="Version">
+   <img src="https://img.shields.io/badge/version-6.9.0-blue" alt="Version">
    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
    <img src="https://img.shields.io/badge/opencode-plugin-purple" alt="OpenCode Plugin">
    <img src="https://img.shields.io/badge/agents-9-orange" alt="Agents">
-   <img src="https://img.shields.io/badge/tests-4008-brightgreen" alt="Tests">
+   <img src="https://img.shields.io/badge/tests-6000+-brightgreen" alt="Tests">
 </p>
 
 <h1 align="center">🐝 OpenCode Swarm</h1>
@@ -486,6 +486,59 @@ bun test
 ```
 
 Zero additional test dependencies. Uses Bun's built-in test runner.
+
+---
+
+## Quality Gates (v6.9.0)
+
+### syntax_check - Tree-sitter Parse Validation
+Validates syntax across 9+ languages using Tree-sitter parsers. Catches syntax errors before review.
+
+### placeholder_scan - Anti-Slop Detection  
+Detects TODO/FIXME comments, placeholder text, and stub implementations. Prevents shipping incomplete code.
+
+### sast_scan - Static Security Analysis
+Offline SAST with 63+ security rules across 9 languages. Optional Semgrep Tier B enhancement if available on PATH.
+
+### sbom_generate - Dependency Tracking
+Generates CycloneDX SBOMs from manifests/lock files. Tracks dependencies for 8 ecosystems.
+
+### build_check - Build Verification
+Runs repo-native build/typecheck commands. Ensures code compiles before review.
+
+### quality_budget - Maintainability Enforcement
+Enforces complexity, API, duplication, and test-to-code ratio budgets. Configurable thresholds.
+
+### Local-Only Guarantee
+All v6.9.0 quality tools run locally without:
+- Docker containers
+- Network connections
+- External APIs
+- Cloud services
+
+Optional enhancement: Semgrep (if already on PATH)
+
+### Configuration
+Configure gates in `.opencode/swarm.json`:
+
+```json
+{
+  "gates": {
+    "syntax_check": { "enabled": true },
+    "placeholder_scan": { "enabled": true },
+    "sast_scan": { "enabled": true },
+    "sbom_generate": { "enabled": true },
+    "build_check": { "enabled": true },
+    "quality_budget": {
+      "enabled": true,
+      "max_complexity_delta": 5,
+      "max_public_api_delta": 10,
+      "max_duplication_ratio": 0.05,
+      "min_test_to_code_ratio": 0.3
+    }
+  }
+}
+```
 
 ---
 

@@ -1,3 +1,4 @@
+export { build_check } from './build-check';
 export { checkpoint } from './checkpoint';
 // v6.5
 export { complexity_hotspots } from './complexity-hotspots';
@@ -9,7 +10,29 @@ export { fetchGitingest, type GitingestArgs, gitingest } from './gitingest';
 export { imports } from './imports';
 export { lint } from './lint';
 export { pkg_audit } from './pkg-audit';
+export {
+	type PlaceholderFinding,
+	type PlaceholderScanInput,
+	type PlaceholderScanResult,
+	placeholderScan,
+} from './placeholder-scan';
+export {
+	type QualityBudgetInput,
+	type QualityBudgetResult,
+	qualityBudget,
+} from './quality-budget';
 export { retrieve_summary } from './retrieve-summary';
+export {
+	type SastScanFinding,
+	type SastScanInput,
+	type SastScanResult,
+	sastScan,
+} from './sast-scan';
+export {
+	type SbomGenerateInput,
+	type SbomGenerateResult,
+	sbom_generate,
+} from './sbom-generate';
 export { schema_drift } from './schema-drift';
 export {
 	type SecretFinding,
@@ -18,6 +41,7 @@ export {
 } from './secretscan';
 export { symbols } from './symbols';
 export {
+	type SyntaxCheckFileResult,
 	type SyntaxCheckInput,
 	type SyntaxCheckResult,
 	syntaxCheck,

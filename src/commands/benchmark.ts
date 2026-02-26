@@ -1,11 +1,22 @@
-import { listEvidenceTaskIds, loadEvidence } from '../evidence/manager';
+import type { QualityBudgetEvidence } from '../config/evidence-schema';
+import {
+	isValidEvidenceType,
+	listEvidenceTaskIds,
+	loadEvidence,
+} from '../evidence/manager';
 import { swarmState } from '../state';
+import { warn } from '../utils';
 
 const CI = {
 	review_pass_rate: 70,
 	test_pass_rate: 80,
 	max_agent_error_rate: 20,
 	max_hard_limit_hits: 1,
+	// Quality budget thresholds
+	max_complexity_delta: 5,
+	max_public_api_delta: 10,
+	max_duplication_ratio: 5, // percentage (5%)
+	min_test_to_code_ratio: 30, // percentage (30%)
 };
 
 export async function handleBenchmarkCommand(
@@ -75,6 +86,22 @@ export async function handleBenchmarkCommand(
 				deletions: number;
 		  }
 		| undefined;
+	// Quality metrics from quality_budget evidence
+	let qualityMetrics:
+		| {
+				complexityDelta: number;
+				publicApiDelta: number;
+				duplicationRatio: number;
+				testToCodeRatio: number;
+				thresholds: {
+					maxComplexityDelta: number;
+					maxPublicApiDelta: number;
+					maxDuplicationRatio: number;
+					minTestToCodeRatio: number;
+				};
+				hasEvidence: boolean;
+		  }
+		| undefined;
 	if (cumulative) {
 		let reviewPasses = 0,
 			reviewFails = 0,
@@ -82,10 +109,22 @@ export async function handleBenchmarkCommand(
 			testFails = 0,
 			additions = 0,
 			deletions = 0;
+		// Quality metrics accumulation
+		let totalComplexityDelta = 0;
+		let totalPublicApiDelta = 0;
+		let totalDuplicationRatio = 0;
+		let totalTestToCodeRatio = 0;
+		let qualityEvidenceCount = 0;
 		for (const tid of await listEvidenceTaskIds(directory)) {
 			const b = await loadEvidence(directory, tid);
 			if (!b) continue;
 			for (const e of b.entries) {
+				// Skip unknown evidence types gracefully with warning
+				if (!isValidEvidenceType(e.type)) {
+					warn(`Unknown evidence type '${e.type}' in task ${tid}, skipping`);
+					continue;
+				}
+
 				if (e.type === 'review') {
 					if (e.verdict === 'approved') reviewPasses++;
 					else if (e.verdict === 'rejected') reviewFails++;
@@ -95,6 +134,13 @@ export async function handleBenchmarkCommand(
 				} else if (e.type === 'diff') {
 					additions += e.additions;
 					deletions += e.deletions;
+				} else if (e.type === 'quality_budget') {
+					const qe = e as QualityBudgetEvidence;
+					totalComplexityDelta += qe.metrics.complexity_delta;
+					totalPublicApiDelta += qe.metrics.public_api_delta;
+					totalDuplicationRatio += qe.metrics.duplication_ratio * 100; // Convert to percentage
+					totalTestToCodeRatio += qe.metrics.test_to_code_ratio * 100; // Convert to percentage
+					qualityEvidenceCount++;
 				}
 			}
 		}
@@ -113,6 +159,40 @@ export async function handleBenchmarkCommand(
 			additions,
 			deletions,
 		};
+		// Calculate average quality metrics
+		if (qualityEvidenceCount > 0) {
+			qualityMetrics = {
+				complexityDelta:
+					Math.round((totalComplexityDelta / qualityEvidenceCount) * 10) / 10,
+				publicApiDelta:
+					Math.round((totalPublicApiDelta / qualityEvidenceCount) * 10) / 10,
+				duplicationRatio:
+					Math.round((totalDuplicationRatio / qualityEvidenceCount) * 10) / 10,
+				testToCodeRatio:
+					Math.round((totalTestToCodeRatio / qualityEvidenceCount) * 10) / 10,
+				thresholds: {
+					maxComplexityDelta: CI.max_complexity_delta,
+					maxPublicApiDelta: CI.max_public_api_delta,
+					maxDuplicationRatio: CI.max_duplication_ratio,
+					minTestToCodeRatio: CI.min_test_to_code_ratio,
+				},
+				hasEvidence: true,
+			};
+		} else {
+			qualityMetrics = {
+				complexityDelta: 0,
+				publicApiDelta: 0,
+				duplicationRatio: 0,
+				testToCodeRatio: 0,
+				thresholds: {
+					maxComplexityDelta: CI.max_complexity_delta,
+					maxPublicApiDelta: CI.max_public_api_delta,
+					maxDuplicationRatio: CI.max_duplication_ratio,
+					minTestToCodeRatio: CI.min_test_to_code_ratio,
+				},
+				hasEvidence: false,
+			};
+		}
 	}
 
 	// CI gate
@@ -139,6 +219,16 @@ export async function handleBenchmarkCommand(
 		let maxHardLimits = 0;
 		for (const v of agentMap.values())
 			if (v.hardLimits > maxHardLimits) maxHardLimits = v.hardLimits;
+
+		// Get quality metrics values (use 0 if no evidence)
+		// Quality checks only fail when there IS evidence and it exceeds thresholds
+		// When no evidence exists, quality checks pass by default
+		const hasQualityEvidence = qualityMetrics?.hasEvidence ?? false;
+		const complexityDelta = qualityMetrics?.complexityDelta ?? 0;
+		const publicApiDelta = qualityMetrics?.publicApiDelta ?? 0;
+		const duplicationRatio = qualityMetrics?.duplicationRatio ?? 0;
+		const testToCodeRatio = qualityMetrics?.testToCodeRatio ?? 0;
+
 		const checks = [
 			{
 				name: 'Review pass rate',
@@ -167,6 +257,39 @@ export async function handleBenchmarkCommand(
 				threshold: CI.max_hard_limit_hits,
 				operator: '<=',
 				passed: maxHardLimits <= CI.max_hard_limit_hits,
+			},
+			// Quality budget checks - only fail if evidence exists and exceeds threshold
+			{
+				name: 'Complexity Delta',
+				value: complexityDelta,
+				threshold: CI.max_complexity_delta,
+				operator: '<=',
+				passed:
+					!hasQualityEvidence || complexityDelta <= CI.max_complexity_delta,
+			},
+			{
+				name: 'Public API Delta',
+				value: publicApiDelta,
+				threshold: CI.max_public_api_delta,
+				operator: '<=',
+				passed:
+					!hasQualityEvidence || publicApiDelta <= CI.max_public_api_delta,
+			},
+			{
+				name: 'Duplication Ratio',
+				value: duplicationRatio,
+				threshold: CI.max_duplication_ratio,
+				operator: '<=',
+				passed:
+					!hasQualityEvidence || duplicationRatio <= CI.max_duplication_ratio,
+			},
+			{
+				name: 'Test-to-Code Ratio',
+				value: testToCodeRatio,
+				threshold: CI.min_test_to_code_ratio,
+				operator: '>=',
+				passed:
+					!hasQualityEvidence || testToCodeRatio >= CI.min_test_to_code_ratio,
 			},
 		];
 		ciGate = { passed: checks.every((c) => c.passed), checks: checks };
@@ -234,12 +357,42 @@ export async function handleBenchmarkCommand(
 		lines.push('');
 	}
 
+	// Quality Metrics section
+	if (qualityMetrics && qualityMetrics.hasEvidence) {
+		lines.push('### Quality Metrics');
+		lines.push(
+			`- Complexity Delta: ${qualityMetrics.complexityDelta} (max: ${qualityMetrics.thresholds.maxComplexityDelta}) ${qualityMetrics.complexityDelta <= qualityMetrics.thresholds.maxComplexityDelta ? '✅' : '❌'}`,
+		);
+		lines.push(
+			`- Public API Delta: ${qualityMetrics.publicApiDelta} (max: ${qualityMetrics.thresholds.maxPublicApiDelta}) ${qualityMetrics.publicApiDelta <= qualityMetrics.thresholds.maxPublicApiDelta ? '✅' : '❌'}`,
+		);
+		lines.push(
+			`- Duplication Ratio: ${qualityMetrics.duplicationRatio}% (max: ${qualityMetrics.thresholds.maxDuplicationRatio}%) ${qualityMetrics.duplicationRatio <= qualityMetrics.thresholds.maxDuplicationRatio ? '✅' : '❌'}`,
+		);
+		lines.push(
+			`- Test-to-Code Ratio: ${qualityMetrics.testToCodeRatio}% (min: ${qualityMetrics.thresholds.minTestToCodeRatio}%) ${qualityMetrics.testToCodeRatio >= qualityMetrics.thresholds.minTestToCodeRatio ? '✅' : '❌'}`,
+		);
+		lines.push('');
+	}
+
 	if (ciGate) {
 		lines.push('### CI Gate', ciGate.passed ? '✅ PASSED' : '❌ FAILED');
-		for (const c of ciGate.checks)
+		for (const c of ciGate.checks) {
+			// Format value based on check type
+			let valueStr: string;
+			if (c.name === 'Complexity Delta' || c.name === 'Public API Delta') {
+				valueStr = `${c.value}`;
+			} else {
+				valueStr = `${c.value}%`;
+			}
+			const thresholdStr =
+				c.name === 'Complexity Delta' || c.name === 'Public API Delta'
+					? `${c.threshold}`
+					: `${c.threshold}%`;
 			lines.push(
-				`- ${c.name}: ${c.value}% ${c.operator} ${c.threshold}% ${c.passed ? '✅' : '❌'}`,
+				`- ${c.name}: ${valueStr} ${c.operator} ${thresholdStr} ${c.passed ? '✅' : '❌'}`,
 			);
+		}
 		lines.push('');
 	}
 
@@ -269,6 +422,15 @@ export async function handleBenchmarkCommand(
 			total_tests_failed: quality.testsFailed,
 			additions: quality.additions,
 			deletions: quality.deletions,
+		};
+	if (qualityMetrics)
+		json.quality_metrics = {
+			complexity_delta: qualityMetrics.complexityDelta,
+			public_api_delta: qualityMetrics.publicApiDelta,
+			duplication_ratio: qualityMetrics.duplicationRatio,
+			test_to_code_ratio: qualityMetrics.testToCodeRatio,
+			thresholds: qualityMetrics.thresholds,
+			has_evidence: qualityMetrics.hasEvidence,
 		};
 	if (ciGate)
 		json.ci_gate = {

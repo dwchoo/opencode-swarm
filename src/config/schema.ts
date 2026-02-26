@@ -117,13 +117,79 @@ export const GateFeatureSchema = z.object({
 
 export type GateFeature = z.infer<typeof GateFeatureSchema>;
 
+// Placeholder scan configuration (extends GateFeatureSchema with placeholder-specific settings)
+export const PlaceholderScanConfigSchema = GateFeatureSchema.extend({
+	deny_patterns: z
+		.array(z.string())
+		.default([
+			'TODO',
+			'FIXME',
+			'TBD',
+			'XXX',
+			'placeholder',
+			'stub',
+			'wip',
+			'not implemented',
+		]),
+	allow_globs: z
+		.array(z.string())
+		.default([
+			'docs/**',
+			'examples/**',
+			'tests/**',
+			'**/*.test.*',
+			'**/*.spec.*',
+			'**/mocks/**',
+			'**/__tests__/**',
+		]),
+	max_allowed_findings: z.number().min(0).default(0),
+});
+
+export type PlaceholderScanConfig = z.infer<typeof PlaceholderScanConfigSchema>;
+
+// Quality budget configuration (extends GateFeatureSchema with quality thresholds)
+export const QualityBudgetConfigSchema = GateFeatureSchema.extend({
+	max_complexity_delta: z.number().default(5),
+	max_public_api_delta: z.number().default(10),
+	max_duplication_ratio: z.number().default(0.05),
+	min_test_to_code_ratio: z.number().default(0.3),
+	enforce_on_globs: z.array(z.string()).default(['src/**']),
+	exclude_globs: z
+		.array(z.string())
+		.default(['docs/**', 'tests/**', '**/*.test.*']),
+});
+
+export type QualityBudgetConfig = z.infer<typeof QualityBudgetConfigSchema>;
+
 export const GateConfigSchema = z.object({
 	syntax_check: GateFeatureSchema.default({ enabled: true }),
-	placeholder_scan: GateFeatureSchema.default({ enabled: true }),
+	placeholder_scan: PlaceholderScanConfigSchema.default({
+		enabled: true,
+		deny_patterns: [
+			'TODO',
+			'FIXME',
+			'TBD',
+			'XXX',
+			'placeholder',
+			'stub',
+			'wip',
+			'not implemented',
+		],
+		allow_globs: [
+			'docs/**',
+			'examples/**',
+			'tests/**',
+			'**/*.test.*',
+			'**/*.spec.*',
+			'**/mocks/**',
+			'**/__tests__/**',
+		],
+		max_allowed_findings: 0,
+	}),
 	sast_scan: GateFeatureSchema.default({ enabled: true }),
 	sbom_generate: GateFeatureSchema.default({ enabled: true }),
 	build_check: GateFeatureSchema.default({ enabled: true }),
-	quality_budget: GateFeatureSchema.default({ enabled: true }),
+	quality_budget: QualityBudgetConfigSchema,
 });
 
 export type GateConfig = z.infer<typeof GateConfigSchema>;

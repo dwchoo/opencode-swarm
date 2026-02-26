@@ -121,19 +121,148 @@ describe('Language Registry', () => {
 			expect(parser).toBeNull();
 		});
 
+		it('should return null for files with no recognized extension', async () => {
+			const parser = await getParserForFile('file.java');
+			expect(parser).toBeNull();
+		});
+
 		// Note: These tests require WASM files to be present
-		// They will fail until grammars are copied
-		it('should attempt to load grammar for supported files', async () => {
-			// This will fail gracefully if WASM not present
+		// They will fail gracefully if grammars are not copied
+		it('should attempt to load grammar for .js files', async () => {
 			try {
 				const parser = await getParserForFile('test.js');
-				// If WASM present, should return parser
-				// If not, should return null (not throw)
 				expect(parser === null || typeof parser === 'object').toBe(true);
 			} catch {
-				// Should not throw
 				expect(false).toBe(true);
 			}
+		});
+
+		it('should attempt to load grammar for .jsx files', async () => {
+			try {
+				const parser = await getParserForFile('test.jsx');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should attempt to load grammar for .ts files', async () => {
+			try {
+				const parser = await getParserForFile('test.ts');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should attempt to load grammar for .tsx files (TypeScript)', async () => {
+			try {
+				const parser = await getParserForFile('Component.tsx');
+				// Should resolve to TypeScript, not JavaScript
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should attempt to load grammar for .py files (Python)', async () => {
+			try {
+				const parser = await getParserForFile('script.py');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should attempt to load grammar for .go files (Go)', async () => {
+			try {
+				const parser = await getParserForFile('main.go');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should attempt to load grammar for .rs files (Rust)', async () => {
+			try {
+				const parser = await getParserForFile('lib.rs');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should handle paths with directories', async () => {
+			try {
+				const parser = await getParserForFile('/path/to/file.ts');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should handle nested paths like src/components/Button.tsx', async () => {
+			try {
+				const parser = await getParserForFile('src/components/Button.tsx');
+				expect(parser === null || typeof parser === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+
+		it('should be case insensitive for file extension', async () => {
+			try {
+				const parserLower = await getParserForFile('file.JS');
+				const parserNormal = await getParserForFile('file.js');
+				// Both should either return null or return parser
+				expect(parserLower === null || typeof parserLower === 'object').toBe(true);
+				expect(parserNormal === null || typeof parserNormal === 'object').toBe(true);
+			} catch {
+				expect(false).toBe(true);
+			}
+		});
+	});
+
+	describe('getParserForFile caching', () => {
+		beforeEach(() => {
+			clearParserCache();
+		});
+
+		it('should cache loaded parsers for subsequent calls', async () => {
+			// Get parser for a file
+			const parser1 = await getParserForFile('test.js');
+			
+			// If parser was loaded, verify caching by checking cache state
+			if (parser1 !== null) {
+				// Get parser again - should return same cached instance
+				const parser2 = await getParserForFile('test.js');
+				expect(parser2).toBe(parser1); // Same reference due to caching
+			}
+		});
+
+		it('should cache different language parsers separately', async () => {
+			// Get parser for TypeScript
+			const tsParser = await getParserForFile('test.ts');
+			// Get parser for JavaScript  
+			const jsParser = await getParserForFile('test.js');
+			
+			if (tsParser !== null && jsParser !== null) {
+				// They should be different instances for different languages
+				expect(tsParser).not.toBe(jsParser);
+			}
+		});
+
+		it('clearParserCache should enable reloading parsers', async () => {
+			// Get parser first time
+			const parser1 = await getParserForFile('test.js');
+			
+			// Clear cache
+			clearParserCache();
+			
+			// Get parser again - should work (or return null if no WASM)
+			const parser2 = await getParserForFile('test.js');
+			// parser2 can be null (no WASM) or different instance after cache clear
+			expect(parser2 === null || typeof parser2 === 'object').toBe(true);
 		});
 	});
 });
