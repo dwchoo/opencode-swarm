@@ -39,8 +39,8 @@ describe('handleResetCommand', () => {
 
     expect(result).toContain('## Swarm Reset');
     expect(result).toContain('⚠️ This will delete plan.md and context.md from .swarm/');
-    expect(result).toContain('Tip**: Run `/swarm export` first to backup your state.');
-    expect(result).toContain('To confirm, run: `/swarm reset --confirm`');
+    expect(result).toContain('Tip**: Run `/swarm-export` first to backup your state.');
+    expect(result).toContain('To confirm, run: `/swarm-reset --confirm`');
 
     // Verify files still exist
     expect(existsSync(join(tempDir, '.swarm', 'plan.md'))).toBe(true);
@@ -107,10 +107,10 @@ describe('handleResetCommand', () => {
     expect(existsSync(join(tempDir, '.swarm', 'context.md'))).toBe(false);
   });
 
-  test('Warning message includes tip about /swarm export', async () => {
+  test('Warning message includes tip about /swarm-export', async () => {
     const result = await handleResetCommand(tempDir, []);
 
-    expect(result).toContain('Tip**: Run `/swarm export` first to backup your state.');
+    expect(result).toContain('Tip**: Run `/swarm-export` first to backup your state.');
   });
 
   test('With --confirm flag', async () => {

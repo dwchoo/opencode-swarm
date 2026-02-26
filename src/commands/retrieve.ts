@@ -1,7 +1,7 @@
 import { loadFullOutput } from '../summaries/manager';
 
 /**
- * Handles the /swarm retrieve command.
+ * Handles the /swarm-retrieve command.
  * Loads full tool output from .swarm/summaries/{id}.json and returns it.
  */
 
@@ -16,9 +16,9 @@ export async function handleRetrieveCommand(
 		return [
 			'## Swarm Retrieve',
 			'',
-			'Usage: `/swarm retrieve <id>`',
+			'Usage: `/swarm-retrieve <id>`',
 			'',
-			'Example: `/swarm retrieve S1`',
+			'Example: `/swarm-retrieve S1`',
 			'',
 			'Retrieves the full output that was replaced by a summary.',
 		].join('\n');

@@ -130,9 +130,9 @@ opencode
 Inside OpenCode:
 
 ```text
-/swarm status
-/swarm agents
-/swarm config
+/swarm-status
+/swarm-agents
+/swarm-config
 ```
 
 Then ask architect to use v6.8 tools:
@@ -140,6 +140,13 @@ Then ask architect to use v6.8 tools:
 ```text
 @mega_architect run todo_extract and complexity_hotspots for this repo
 @mega_architect run evidence_check
+@mega_architect run pkg_audit ecosystem:auto
+```
+
+If API routes and an OpenAPI spec are present, also run:
+
+```text
+@mega_architect run schema_drift spec_file:openapi.yaml
 ```
 
 You should see the tool calls for:
@@ -186,9 +193,9 @@ opencode
 ### 2.5 Verify plugin and tools
 
 ```text
-/swarm status
-/swarm agents
-/swarm config
+/swarm-status
+/swarm-agents
+/swarm-config
 @mega_architect run todo_extract and complexity_hotspots for this repo
 ```
 
@@ -240,8 +247,8 @@ opencode
 Run these in OpenCode:
 
 ```text
-/swarm status
-/swarm config
+/swarm-status
+/swarm-config
 @mega_architect run pkg_audit ecosystem:auto and summarize results
 ```
 
@@ -272,7 +279,7 @@ docker run --rm -it \
 
 - `plugin not found`: confirm `opencode.json` has `"opencode-swarm"`
 - wrong swarm names: verify `swarms.mega` exists and use `@mega_*` agents
-- tools missing: run `/swarm config` and confirm plugin loaded
+- tools missing: run `/swarm-config` and confirm plugin loaded
 - no API access: ensure model/provider credentials are available in container env
 - Windows mount errors: use forward slashes in Docker volume paths
 - PowerShell policy errors: run shell as user with npm global install permissions
@@ -282,7 +289,7 @@ docker run --rm -it \
 Run this sequence in OpenCode:
 
 ```text
-/swarm status
+/swarm-status
 @mega_architect run todo_extract
 @mega_architect run complexity_hotspots days:90 top_n:10
 @mega_architect run evidence_check

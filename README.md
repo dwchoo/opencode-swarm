@@ -184,9 +184,11 @@ Other frameworks lose everything when the session ends. Swarm stores project sta
 ├── plan.md          # Living roadmap: phases, tasks, status, rejections, blockers
 ├── plan.json        # Machine-readable plan for tooling
 ├── context.md       # Institutional knowledge: decisions, SME guidance, patterns
-├── evidence/        # Per-task execution evidence bundles
-│   ├── 1.1/         # review verdict, test results, diff summary for task 1.1
-│   └── 2.3/
+├── evidence/        # Execution evidence records (and optional bundles)
+│   ├── 1_1-review.json  # Review evidence for task 1.1
+│   ├── 1_1-test.json    # Test evidence for task 1.1
+│   ├── 2_3-diff.json    # Diff evidence for task 2.3
+│   └── 2.3/evidence.json # Optional: bundle aggregation for task 2.3
 └── history/
     ├── phase-1.md   # What was built, what was learned, retrospective metrics
     └── phase-2.md
@@ -251,6 +253,8 @@ Each completed task writes structured evidence to `.swarm/evidence/`:
 | `diff` | Files changed, additions/deletions, contract change flags |
 | `approval` | Stakeholder sign-off with notes |
 | `retrospective` | Phase metrics: total tool calls, coder revisions, reviewer rejections, test failures, security findings, lessons learned |
+
+Evidence records are written as individual JSON files named `<major>_<minor>-<type>.json` (e.g. `2_2-review.json`) where `task_id` and `type` inside the JSON must match the filename.
 
 Retrospectives from completed phases are injected as `[SWARM RETROSPECTIVE]` hints at the start of subsequent phases. The framework learns from its own history within a project.
 
@@ -332,7 +336,7 @@ Per-agent profiles allow fine-grained overrides:
 | Circuit breaker / guardrails | ✅ Per-invocation | ❌ | ❌ | ❌ | ❌ |
 | Open-domain SME consultation | ✅ Any domain | ❌ | ❌ | ❌ | ❌ |
 | Retrospective learning across phases | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Slash commands + diagnostics | ✅ 12 commands | ❌ | Limited | ❌ | ❌ |
+| Slash commands + diagnostics | ✅ canonical `/swarm-*` commands | ❌ | Limited | ❌ | ❌ |
 
 ---
 
@@ -340,21 +344,23 @@ Per-agent profiles allow fine-grained overrides:
 
 | Command | Description |
 |---------|-------------|
-| `/swarm status` | Current phase, task progress, agent count |
-| `/swarm plan [N]` | Full plan or filtered by phase |
-| `/swarm agents` | All registered agents with models and permissions |
-| `/swarm history` | Completed phases with status |
-| `/swarm config` | Current resolved configuration |
-| `/swarm diagnose` | Health check for `.swarm/` files and config |
-| `/swarm export` | Export plan and context as portable JSON |
-| `/swarm evidence [task]` | Evidence bundles for a task or all tasks |
-| `/swarm archive [--dry-run]` | Archive old evidence with retention policy |
-| `/swarm benchmark` | Performance benchmarks |
-| `/swarm retrieve [id]` | Retrieve auto-summarized tool outputs |
-| `/swarm reset --confirm` | Clear swarm state files |
-| `/swarm preflight` | Run phase preflight checks (v6.7) |
-| `/swarm config doctor [--fix] [--restore <id>]` | Config validation with optional auto-fix (v6.7) |
-| `/swarm sync-plan` | Force plan.md regeneration from plan.json (v6.7) |
+| `/swarm-status` | Current phase, task progress, agent count |
+| `/swarm-plan [phase]` | Full plan or filtered by phase |
+| `/swarm-agents` | All registered agents with models and permissions |
+| `/swarm-history` | Completed phases with status |
+| `/swarm-config` | Current resolved configuration |
+| `/swarm-config-doctor [--fix] [--restore <id>]` | Config validation with optional auto-fix (v6.7) |
+| `/swarm-doctor` | Run doctor diagnostics command |
+| `/swarm-evidence [task]` | Evidence bundles for a task or all tasks |
+| `/swarm-evidence-summary` | Generate evidence completion summary |
+| `/swarm-archive [--dry-run]` | Archive old evidence with retention policy |
+| `/swarm-diagnose` | Health check for `.swarm/` files and config |
+| `/swarm-preflight` | Run phase preflight checks (v6.7) |
+| `/swarm-sync-plan` | Force plan.md regeneration from plan.json (v6.7) |
+| `/swarm-benchmark` | Performance benchmarks |
+| `/swarm-export` | Export plan and context as portable JSON |
+| `/swarm-reset --confirm` | Clear swarm state files |
+| `/swarm-retrieve [id]` | Retrieve auto-summarized tool outputs |
 
 ---
 
@@ -458,7 +464,7 @@ npm install -g opencode-swarm
 npx opencode-swarm install
 
 # Verify
-opencode  # then: /swarm diagnose
+opencode  # then: /swarm-diagnose
 ```
 
 The installer auto-configures `opencode.json` to include the plugin. Manual configuration:

@@ -341,7 +341,7 @@ createPhaseMonitorHook() → Detects phase transitions → Triggers preflight
 ```
 
 **Benefits:**
-- No `/swarm preflight` needed during execution
+- No `/swarm-preflight` needed during execution
 - Consistent preflight at every phase boundary
 - Automatic blocker detection before coding starts
 - Reduces architect cognitive load
@@ -409,8 +409,8 @@ When you combine automatic triggers and background workers:
 
 | v6.7 Only | v6.8 |
 |-----------|------|
-| Manual `/swarm preflight` at phase boundaries | Auto-trigger preflight at every phase change |
-| Manual `/swarm evidence summary` for long tasks | Auto-summary for long-running tasks |
+| Manual `/swarm-preflight` at phase boundaries | Auto-trigger preflight at every phase change |
+| Manual `/swarm-evidence-summary` for long tasks | Auto-summary for long-running tasks |
 | Manual plan refresh to see latest plan.json | Background plan sync (default enabled) |
 | Architect focused on coding | Architect focused on coding + automation handles sync |
 

@@ -398,7 +398,7 @@ rm -rf .swarm/
 
 Or use the slash command:
 ```
-/swarm reset --confirm
+/swarm-reset --confirm
 ```
 
 ---
@@ -689,9 +689,9 @@ Control background-first automation and feature flags:
 #### Manual (Default)
 
 No background automation. All actions require explicit slash commands:
-- `/swarm preflight` - Run preflight checks manually
-- `/swarm config doctor` - Validate config manually
-- `/swarm sync-plan` - Sync plan.md from plan.json manually
+- `/swarm-preflight` - Run preflight checks manually
+- `/swarm-config-doctor` - Validate config manually
+- `/swarm-sync-plan` - Sync plan.md from plan.json manually
 
 Use this mode when you want full control over background operations.
 
@@ -704,7 +704,7 @@ Background automation for safe operations:
 
 Manual triggers for sensitive operations:
 - Preflight checks run via slash command
-- Any manual overrides via `/swarm` commands
+- Any manual overrides via canonical `/swarm-*` commands
 
 Use this mode when you want some automation but want to approve sensitive operations.
 
@@ -731,7 +731,7 @@ Use this mode when you've tested automation and want maximum productivity.
 - Defaults to scan-only mode (`autoFix: false`)
 - Only runs auto-fix when explicitly enabled via `config_doctor_autofix: true`
 - Creates encrypted backups in `.swarm/` before applying fixes
-- Supports restore via `/swarm config doctor --restore <backup-id>`
+- Supports restore via `/swarm-config-doctor --restore <backup-id>`
 
 ### GUI Visibility
 
@@ -763,9 +763,9 @@ GUI can read this file to show automation status, current phase, and pending act
 
 | Command | Function | Use Case |
 |---------|----------|----------|
-| `/swarm preflight` | Run preflight checks on current plan | Validate before starting phase |
-| `/swarm config doctor [--fix] [--restore <id>]` | Config Doctor with optional auto-fix and restore | Fix configuration issues |
-| `/swarm sync-plan` | Force plan.md regeneration from plan.json | Sync plan files |
+| `/swarm-preflight` | Run preflight checks on current plan | Validate before starting phase |
+| `/swarm-config-doctor [--fix] [--restore <id>]` | Config Doctor with optional auto-fix and restore | Fix configuration issues |
+| `/swarm-sync-plan` | Force plan.md regeneration from plan.json | Sync plan files |
 
 All automation commands:
 - Non-blocking (fire and forget for background operations)
@@ -777,9 +777,53 @@ All automation commands:
 
 ## Slash Commands
 
-Twelve commands are available under `/swarm`:
+Legacy `/swarm ...` forms are hard-removed. Use canonical `/swarm-*` commands only.
 
-### `/swarm status`
+### Hard-Removal Matrix (Legacy -> Canonical)
+
+| Legacy form (removed) | Canonical replacement |
+|-----------------------|-----------------------|
+| `/swarm status` | `/swarm-status` |
+| `/swarm plan [phase]` | `/swarm-plan [phase]` |
+| `/swarm agents` | `/swarm-agents` |
+| `/swarm history` | `/swarm-history` |
+| `/swarm config` | `/swarm-config` |
+| `/swarm config doctor [--fix] [--restore <id>]` | `/swarm-config-doctor [--fix] [--restore <id>]` |
+| `/swarm doctor` | `/swarm-doctor` |
+| `/swarm diagnose` | `/swarm-diagnose` |
+| `/swarm preflight` | `/swarm-preflight` |
+| `/swarm sync-plan` | `/swarm-sync-plan` |
+| `/swarm evidence [taskId]` | `/swarm-evidence [taskId]` |
+| `/swarm evidence summary` | `/swarm-evidence-summary` |
+| `/swarm archive [--dry-run]` | `/swarm-archive [--dry-run]` |
+| `/swarm benchmark [--cumulative] [--ci-gate]` | `/swarm-benchmark [--cumulative] [--ci-gate]` |
+| `/swarm export` | `/swarm-export` |
+| `/swarm reset --confirm` | `/swarm-reset --confirm` |
+| `/swarm retrieve <id>` | `/swarm-retrieve <id>` |
+
+### Canonical Command List
+
+| Command | Description |
+|---------|-------------|
+| `/swarm-status` | Show current phase, progress, and agent count |
+| `/swarm-plan [phase]` | Show full plan or only a specific phase |
+| `/swarm-agents` | List registered agents and profiles |
+| `/swarm-history` | Show completed phases with status |
+| `/swarm-config` | Show resolved plugin configuration |
+| `/swarm-config-doctor` | Validate config (`--fix` and `--restore <id>` supported) |
+| `/swarm-doctor` | Run doctor diagnostics command |
+| `/swarm-diagnose` | Health check for `.swarm/` files and evidence |
+| `/swarm-preflight` | Run preflight checks on current plan |
+| `/swarm-sync-plan` | Regenerate plan.md from plan.json |
+| `/swarm-evidence [taskId]` | Show evidence for one task or all tasks |
+| `/swarm-evidence-summary` | Generate evidence completion summary |
+| `/swarm-archive [--dry-run]` | Archive old evidence bundles |
+| `/swarm-benchmark [--cumulative] [--ci-gate]` | Run performance benchmarks |
+| `/swarm-export` | Export plan/context as JSON |
+| `/swarm-reset --confirm` | Clear swarm state files |
+| `/swarm-retrieve <id>` | Retrieve full output for a summary ID |
+
+### `/swarm-status`
 
 Shows current swarm state:
 - Current phase and phase status
@@ -792,21 +836,19 @@ Tasks: 3/5 complete
 Agents: 9 registered
 ```
 
-### `/swarm plan`
+### `/swarm-plan [phase]`
 
 Displays the full `.swarm/plan.md` content.
 
-### `/swarm plan N`
-
-Displays only Phase N from the plan. Example:
+Displays only the requested phase when provided. Example:
 
 ```
-/swarm plan 2
+/swarm-plan 2
 ```
 
 Shows the Phase 2 section including all tasks, dependencies, and status.
 
-### `/swarm agents`
+### `/swarm-agents`
 
 Lists all registered agents with their configuration including guardrail profiles:
 
@@ -819,38 +861,38 @@ Lists all registered agents with their configuration including guardrail profile
 | ...            | ...                          | ...  | ...       | ...               |
 ```
 
-### `/swarm history`
+### `/swarm-history`
 
 View completed phases with status icons.
 
-### `/swarm config`
+### `/swarm-config`
 
 View current resolved plugin configuration.
 
-### `/swarm diagnose`
+### `/swarm-diagnose`
 
 Health check for `.swarm/` files, plan structure, and evidence completeness.
 
-### `/swarm export`
+### `/swarm-export`
 
 Export plan and context as portable JSON.
 
-### `/swarm reset --confirm`
+### `/swarm-reset --confirm`
 
 Clear swarm state files. Requires `--confirm` flag as a safety gate.
 
-### `/swarm evidence [task]`
+### `/swarm-evidence [taskId]`
 
 View evidence bundles for a specific task, or list all tasks with evidence when no task ID is provided.
 
-### `/swarm archive [--dry-run]`
+### `/swarm-archive [--dry-run]`
 
 Archive old evidence bundles based on the retention policy. Use `--dry-run` to preview what would be archived.
 
-### `/swarm benchmark`
+### `/swarm-benchmark [--cumulative] [--ci-gate]`
 
 Run performance benchmarks and display metrics. Tracks tool call rates, delegation chains, and evidence-derived pass rates.
 
-### `/swarm retrieve [id]`
+### `/swarm-retrieve <id>`
 
 Retrieve auto-summarized tool outputs by ID. When tool outputs are too large, they are summarized automatically — use this command to retrieve the full content by ID.

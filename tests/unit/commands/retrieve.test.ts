@@ -21,8 +21,8 @@ describe('handleRetrieveCommand', () => {
     const result = await handleRetrieveCommand(tempDir, []);
 
     expect(result).toContain('## Swarm Retrieve');
-    expect(result).toContain('/swarm retrieve <id>');
-    expect(result).toContain('Example: `/swarm retrieve S1`');
+    expect(result).toContain('/swarm-retrieve <id>');
+    expect(result).toContain('Example: `/swarm-retrieve S1`');
   });
 
   it('valid ID with stored summary returns full original output', async () => {

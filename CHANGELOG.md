@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **`EvidenceSummaryIntegration` enhanced** — Wired into plugin init (`src/index.ts`) with `evidence_auto_summaries: true` default. Auto-generates evidence summaries for long-running tasks automatically.
-- **`/swarm evidence summary` slash command** — New command (`src/commands/evidence.ts`, `src/services/evidence-service.ts`) to manually trigger evidence summary generation.
+- **`/swarm-evidence-summary` slash command** — New command (`src/commands/evidence.ts`, `src/services/evidence-service.ts`) to manually trigger evidence summary generation.
 - **`phase_monitor.ts` hook** — `createPhaseMonitorHook()` detects phase transitions and automatically triggers preflight. Exported from `src/hooks/index.ts`.
 - **`createPreflightIntegration()` wired** — Integrated into plugin hook chain in `src/index.ts` to enable phase-boundary preflight automation.
 - **`PlanSyncWorker` background worker** — `PlanSyncWorker` class in `src/background/plan-sync-worker.ts` with `fs.watch` + 2s polling fallback, 300ms debounce, overlap lock, safe shutdown. Auto-regenerates plan.md from plan.json when out of sync.
@@ -30,11 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`createPreflightIntegration()`** — Integration factory that sets up the preflight automation pipeline.
 - **`ConfigDoctorService`** — Validates plugin configuration on startup, reports issues, and optionally autofixes safe problems.
 - **`DecisionDriftAnalyzer`** — Analyzes architect decisions in plan.json and warns about contradictions or drift from previous decisions.
-- **`/swarm preflight`** — Manual preflight health check slash command.
-- **`/swarm diagnose`** — Plugin diagnostic slash command with configuration validation, evidence completeness check, and health status.
-- **`/swarm export`** — Export plan.md and context.md as portable JSON with version and timestamp.
-- **`/swarm history`** — View completed phases from plan.md with status icons and task counts.
-- **`/swarm sync-plan`** — Sync plan.json to plan.md when out of sync (manual or background).
+- **`/swarm-preflight`** — Manual preflight health check slash command.
+- **`/swarm-diagnose`** — Plugin diagnostic slash command with configuration validation, evidence completeness check, and health status.
+- **`/swarm-export`** — Export plan.md and context.md as portable JSON with version and timestamp.
+- **`/swarm-history`** — View completed phases from plan.md with status icons and task counts.
+- **`/swarm-sync-plan`** — Sync plan.json to plan.md when out of sync (manual or background).
 - **Architecture shift to GUI-first, background-first** — Business logic in services; slash commands are thin adapters for control surfaces.
 - **Conservative security defaults** — `phase_preflight: false`, `config_doctor_autofix: false` (explicit opt-in required for action-triggering automation).
 
@@ -280,7 +280,7 @@ This preserves all git history and is non-destructive. After restoring, amend th
 - **Reversible summaries for oversized tool outputs** — New `tool.execute.after` hook auto-summarizes tool outputs that exceed a configurable byte threshold (default 20 KB). Oversized outputs are replaced with a compact summary containing a retrieval ID (e.g., S1, S2) while the full content is stored in `.swarm/summaries/`. Configurable via `summaries` config block:
   - `enabled` (default true), `threshold_bytes` (default 20480), `max_summary_chars` (default 1000)
   - `max_stored_bytes` (default 10 MB), `retention_days` (default 7)
-- **`/swarm retrieve <id>` command** — Retrieves the full original output for a given summary ID
+- **`/swarm-retrieve <id>` command** — Retrieves the full original output for a given summary ID
 - Hysteresis-based threshold (1.25× factor) prevents churn for outputs near the threshold boundary
 - Graceful fail-open: if storage fails, original output passes through unchanged
 - Content-type detection (JSON, code, text, binary) for intelligent summary previews
@@ -292,7 +292,7 @@ This preserves all git history and is non-destructive. After restoring, amend th
 
 ## [5.1.2] - 2026-02-13
 ### Added
-- **`/swarm benchmark` command** — New performance metrics command with three modes:
+- **`/swarm-benchmark` command** — New performance metrics command with three modes:
   - Default: In-memory snapshot from `swarmState` (tool call counts, success rates, avg durations, delegation chains, active sessions)
   - `--cumulative`: Aggregates evidence bundles from `.swarm/evidence/` (review verdicts, test pass rates, diff stats)
   - `--ci-gate`: Exits with pass/fail verdict against configurable thresholds (tool success rate ≥95%, test pass rate ≥90%, review approval rate ≥80%)
@@ -450,19 +450,19 @@ This preserves all git history and is non-destructive. After restoring, amend th
 - **Evidence bundles** — Per-task execution evidence persisted to `.swarm/evidence/{taskId}/`. Five discriminated evidence types via Zod: `review` (with risk/issues), `test` (pass/fail counts), `diff` (files/additions/deletions), `approval`, and `note`. Atomic writes via temp+rename pattern.
 - **Evidence retention** — Configurable retention policy: `max_age_days` (default: 90), `max_bundles` (default: 1000), `auto_archive` flag. `archiveEvidence()` function with maxBundles enforcement.
 - **Evidence config** — `EvidenceConfigSchema` added to `PluginConfigSchema` with `enabled`, `max_age_days`, `max_bundles`, `auto_archive` fields.
-- **`/swarm evidence [task]`** — View evidence bundles for a specific task or list all tasks with evidence.
-- **`/swarm archive [--dry-run]`** — Archive old evidence bundles with dry-run support for previewing changes.
+- **`/swarm-evidence [task]`** — View evidence bundles for a specific task or list all tasks with evidence.
+- **`/swarm-archive [--dry-run]`** — Archive old evidence bundles with dry-run support for previewing changes.
 - **Per-agent guardrail profiles** — `GuardrailsProfileSchema` with optional override fields. `profiles` field in `GuardrailsConfigSchema` maps agent names to partial guardrail overrides. `resolveGuardrailsConfig()` pure merge function.
 - **Context injection budget** — `max_injection_tokens` field in `ContextBudgetConfigSchema` (range: 100–50,000, default: 4,000). Budget-aware `tryInject()` in system-enhancer with priority-ordered injection: phase → task → decisions → agent context. Lower-priority items dropped when budget exhausted.
-- **Enhanced `/swarm agents`** — Agent count summary line, `⚡ custom limits` indicator for agents with guardrail profiles, and Guardrail Profiles summary section.
+- **Enhanced `/swarm-agents`** — Agent count summary line, `⚡ custom limits` indicator for agents with guardrail profiles, and Guardrail Profiles summary section.
 - **Packaging smoke tests** — 8 CI-safe tests validating `dist/` output: entry point existence, export verification, declaration files, and bundle integrity.
-- **Evidence completeness check** in `/swarm diagnose` — Reports tasks missing evidence.
+- **Evidence completeness check** in `/swarm-diagnose` — Reports tasks missing evidence.
 
 ### Changed
 - System enhancer (`src/hooks/system-enhancer.ts`) refactored to use budget-aware `tryInject()` helper instead of direct `output.system.push()`.
 - Plan-related slash commands (`plan`, `history`, `diagnose`, `export`) updated to use structured plan manager.
 - Guardrails `toolBefore` hook now resolves per-agent config via `resolveGuardrailsConfig(config, session.agentName)`.
-- `/swarm agents` command now loads plugin config and passes guardrails data for profile display.
+- `/swarm-agents` command now loads plugin config and passes guardrails data for profile display.
 - Extractors updated for plan-aware hooks.
 
 ### Tests
@@ -500,9 +500,9 @@ This preserves all git history and is non-destructive. After restoring, amend th
 - Extracted `stripSwarmPrefix()` utility to eliminate 3 duplicate prefix-stripping blocks in `src/agents/index.ts`.
 
 ### Added
-- **`/swarm diagnose`** — Health check for `.swarm/` files, plan structure validation, and plugin configuration.
-- **`/swarm export`** — Export plan.md and context.md as portable JSON with version and timestamp.
-- **`/swarm reset --confirm`** — Clear `.swarm/` state files with safety confirmation gate.
+- **`/swarm-diagnose`** — Health check for `.swarm/` files, plan structure validation, and plugin configuration.
+- **`/swarm-export`** — Export plan.md and context.md as portable JSON with version and timestamp.
+- **`/swarm-reset --confirm`** — Clear `.swarm/` state files with safety confirmation gate.
 - `stripSwarmPrefix()` utility function with input validation, exported for testing.
 
 ### Changed
@@ -521,8 +521,8 @@ This preserves all git history and is non-destructive. After restoring, amend th
 ### Added
 - **CLI `uninstall` command** with `--clean` flag for removing the plugin from opencode.json and optionally cleaning up config files.
 - **Custom error classes** (`SwarmError`, `ConfigError`, `HookError`, `ToolError`, `CLIError`) with actionable `guidance` messages for better DX.
-- **`/swarm history` slash command** — view completed phases from plan.md with status icons and task counts.
-- **`/swarm config` slash command** — view current resolved plugin configuration and config file paths.
+- **`/swarm-history` slash command** — view completed phases from plan.md with status icons and task counts.
+- **`/swarm-config` slash command** — view current resolved plugin configuration and config file paths.
 - **Enhanced `safeHook` error logging** — SwarmError instances now include guidance text in warning output.
 
 ### Tests
@@ -554,7 +554,7 @@ This preserves all git history and is non-destructive. After restoring, amend th
 - **System prompt enhancer** (`experimental.chat.system.transform`) — Injects current phase, task, and key decisions from `.swarm/` files into agent system prompts, keeping agents focused post-compaction.
 - **Session compaction enhancer** (`experimental.session.compacting`) — Enriches OpenCode's built-in session compaction with plan.md phase info and context.md decisions.
 - **Context budget tracker** (`experimental.chat.messages.transform`) — Estimates token usage and injects budget warnings at configurable thresholds (70%/90%). Supports per-model token limits.
-- **Slash commands** — `/swarm status`, `/swarm plan [N]`, `/swarm agents`. Registered via `config` hook and handled via `command.execute.before`.
+- **Slash commands** — `/swarm-status`, `/swarm-plan [N]`, `/swarm-agents`. Registered via `config` hook and handled via `command.execute.before`.
 - **Agent awareness: activity tracking** — `tool.execute.before`/`tool.execute.after` hooks track tool usage per agent. Flushes activity summary to `context.md` every 20 events with promise-based write lock.
 - **Agent awareness: delegation tracker** — `chat.message` hook tracks active agent per session. Opt-in delegation chain logging (disabled by default).
 - **Agent awareness: cross-agent context injection** — System enhancer reads Agent Activity section from context.md and injects relevant context labels (coder/reviewer/test_engineer) into system prompts. Configurable max chars (default: 300).

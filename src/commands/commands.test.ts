@@ -43,7 +43,7 @@ describe('Command Adapters', () => {
 		cleanupDir(tempDir);
 	});
 
-	describe('/swarm preflight', () => {
+	describe('/swarm-preflight', () => {
 		it('should run preflight checks and return formatted report', async () => {
 			// Create minimal package.json for version check
 			fs.writeFileSync(
@@ -66,7 +66,7 @@ describe('Command Adapters', () => {
 		});
 	});
 
-	describe('/swarm config doctor', () => {
+	describe('/swarm-config-doctor', () => {
 		it('should run config doctor and return formatted report for valid config', async () => {
 			createTestConfig(tempDir, {
 				max_iterations: 5,
@@ -102,7 +102,7 @@ describe('Command Adapters', () => {
 		});
 	});
 
-	describe('/swarm sync-plan', () => {
+	describe('/swarm-sync-plan', () => {
 		it('should return no plan message when no plan exists', async () => {
 			const result = await handleSyncPlanCommand(tempDir, []);
 

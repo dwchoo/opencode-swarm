@@ -138,7 +138,7 @@ export function createSummary(
 
 	// Calculate overhead for header and footer lines
 	const headerLine = `[SUMMARY ${summaryId}] ${formattedSize} | ${contentType} | ${lineCount} lines`;
-	const footerLine = `→ Use /swarm retrieve ${summaryId} for full content`;
+	const footerLine = `→ Use /swarm-retrieve ${summaryId} for full content`;
 	const overhead = headerLine.length + 1 + footerLine.length + 1; // +1 for newline each
 
 	const maxPreviewChars = maxSummaryChars - overhead;

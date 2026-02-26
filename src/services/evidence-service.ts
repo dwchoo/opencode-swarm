@@ -279,7 +279,7 @@ export async function handleEvidenceSummaryCommand(
 	const artifact = await buildEvidenceSummary(directory);
 
 	if (!artifact) {
-		return 'No plan found. Run `/swarm plan` to check plan status.';
+		return 'No plan found. Run `/swarm-plan` to check plan status.';
 	}
 
 	const lines: string[] = [

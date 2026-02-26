@@ -5,14 +5,18 @@ import { tool } from '@opencode-ai/plugin';
 // ============ Constants ============
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB per evidence file
 const MAX_EVIDENCE_FILES = 1000;
+const MAX_TOTAL_EVIDENCE_BYTES = 8 * 1024 * 1024; // 8MB total evidence parse budget
+const MAX_REQUIRED_TYPES_RAW_LENGTH = 512;
+const MAX_REQUIRED_TYPES_TOKENS = 32;
+const MAX_REQUIRED_TYPE_TOKEN_LENGTH = 64;
 const EVIDENCE_DIR = '.swarm/evidence';
 const PLAN_FILE = '.swarm/plan.md';
 
 // Shell metacharacters that are not allowed in required_types
 const SHELL_METACHAR_REGEX = /[;&|%$`\\]/;
 
-// Valid filename regex for evidence files
-const VALID_EVIDENCE_FILENAME_REGEX = /^[a-zA-Z0-9_-]+\.json$/;
+// Strict evidence filename schema: <major>_<minor>-<type>.json
+const EVIDENCE_FILENAME_REGEX = /^(\d+)_(\d+)-([a-z0-9][a-z0-9_-]*)\.json$/;
 
 // ============ Types ============
 interface CompletedTask {
@@ -21,6 +25,11 @@ interface CompletedTask {
 }
 
 interface EvidenceFile {
+	taskId: string;
+	type: string;
+}
+
+interface ParsedEvidenceRecord {
 	taskId: string;
 	type: string;
 }
@@ -52,6 +61,9 @@ function containsControlChars(str: string): boolean {
 }
 
 function validateRequiredTypes(input: string): string | null {
+	if (input.length > MAX_REQUIRED_TYPES_RAW_LENGTH) {
+		return `required_types exceeds max length (${MAX_REQUIRED_TYPES_RAW_LENGTH})`;
+	}
 	if (containsControlChars(input)) {
 		return 'required_types contains control characters';
 	}
@@ -65,21 +77,83 @@ function validateRequiredTypes(input: string): string | null {
 	return null;
 }
 
+function parseRequiredTypes(
+	input: string,
+): { types: string[] } | { error: string } {
+	const tokens = input.split(',');
+
+	if (tokens.length > MAX_REQUIRED_TYPES_TOKENS) {
+		return {
+			error: `required_types exceeds max token count (${MAX_REQUIRED_TYPES_TOKENS})`,
+		};
+	}
+
+	const parsed: string[] = [];
+	const seen = new Set<string>();
+
+	for (const token of tokens) {
+		const trimmed = token.trim();
+		if (trimmed.length === 0) {
+			return { error: 'required_types contains empty token' };
+		}
+		if (trimmed.length > MAX_REQUIRED_TYPE_TOKEN_LENGTH) {
+			return {
+				error: `required_types token exceeds max length (${MAX_REQUIRED_TYPE_TOKEN_LENGTH})`,
+			};
+		}
+
+		const canonical = trimmed.toLowerCase();
+		if (seen.has(canonical)) {
+			return { error: `required_types contains duplicate token: ${trimmed}` };
+		}
+
+		seen.add(canonical);
+		parsed.push(trimmed);
+	}
+
+	return { types: parsed };
+}
+
+function parseEvidenceFilename(filename: string): ParsedEvidenceRecord | null {
+	const match = EVIDENCE_FILENAME_REGEX.exec(filename);
+	if (match === null) {
+		return null;
+	}
+
+	return {
+		taskId: `${match[1]}.${match[2]}`,
+		type: match[3],
+	};
+}
+
 // ============ Path Security ============
+function isPathWithinBase(targetPath: string, basePath: string): boolean {
+	const normalizedBase = path.resolve(basePath);
+	const normalizedTarget = path.resolve(targetPath);
+
+	return (
+		normalizedTarget === normalizedBase ||
+		normalizedTarget.startsWith(`${normalizedBase}${path.sep}`)
+	);
+}
+
 function isPathWithinSwarm(filePath: string, cwd: string): boolean {
 	const normalizedCwd = path.resolve(cwd);
 	const swarmPath = path.join(normalizedCwd, '.swarm');
-	const normalizedPath = path.resolve(filePath);
-	return normalizedPath.startsWith(swarmPath);
+	return isPathWithinBase(filePath, swarmPath);
 }
 
 // ============ Plan Parsing ============
 function parseCompletedTasks(planContent: string): CompletedTask[] {
 	const tasks: CompletedTask[] = [];
-	const regex = /^-\s+\[x\]\s+(\d+\.\d+):\s+(.+)/gm;
-	let match: RegExpExecArray | null;
+	const regex = /^-\s+\[[xX]\]\s+(\d+\.\d+):\s+(.+)/gm;
 
-	while ((match = regex.exec(planContent)) !== null) {
+	while (true) {
+		const match = regex.exec(planContent);
+		if (match === null) {
+			break;
+		}
+
 		const taskId = match[1];
 		let taskName = match[2].trim();
 
@@ -93,11 +167,167 @@ function parseCompletedTasks(planContent: string): CompletedTask[] {
 }
 
 // ============ Evidence Reading ============
-function readEvidenceFiles(evidenceDir: string, cwd: string): EvidenceFile[] {
+function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isReviewEvidenceRecord(parsed: Record<string, unknown>): parsed is {
+	task_id: string;
+	type: 'review';
+	timestamp: string;
+	agent: string;
+	verdict: string;
+	summary: string;
+	risk: string;
+	issues: unknown[];
+} {
+	return (
+		isNonEmptyString(parsed.task_id) &&
+		parsed.type === 'review' &&
+		isNonEmptyString(parsed.timestamp) &&
+		isNonEmptyString(parsed.agent) &&
+		isNonEmptyString(parsed.verdict) &&
+		isNonEmptyString(parsed.summary) &&
+		isNonEmptyString(parsed.risk) &&
+		Array.isArray(parsed.issues)
+	);
+}
+
+function isTestEvidenceRecord(parsed: Record<string, unknown>): parsed is {
+	task_id: string;
+	type: 'test';
+	timestamp: string;
+	agent: string;
+	verdict: string;
+	summary: string;
+	tests_passed: number;
+	tests_failed: number;
+} {
+	return (
+		isNonEmptyString(parsed.task_id) &&
+		parsed.type === 'test' &&
+		isNonEmptyString(parsed.timestamp) &&
+		isNonEmptyString(parsed.agent) &&
+		isNonEmptyString(parsed.verdict) &&
+		isNonEmptyString(parsed.summary) &&
+		isNonNegativeInteger(parsed.tests_passed) &&
+		isNonNegativeInteger(parsed.tests_failed)
+	);
+}
+
+function isBaseEvidenceRecord(parsed: Record<string, unknown>): parsed is {
+	task_id: string;
+	type: string;
+} {
+	return isNonEmptyString(parsed.task_id) && isNonEmptyString(parsed.type);
+}
+
+function hasValidOptionalCommonFields(
+	parsed: Record<string, unknown>,
+): boolean {
+	if (parsed.timestamp !== undefined && !isNonEmptyString(parsed.timestamp)) {
+		return false;
+	}
+	if (parsed.agent !== undefined && !isNonEmptyString(parsed.agent)) {
+		return false;
+	}
+	if (parsed.verdict !== undefined && !isNonEmptyString(parsed.verdict)) {
+		return false;
+	}
+	if (parsed.summary !== undefined && !isNonEmptyString(parsed.summary)) {
+		return false;
+	}
+
+	return true;
+}
+
+function hasValidOptionalTestCounts(parsed: Record<string, unknown>): boolean {
+	const hasPassed = parsed.tests_passed !== undefined;
+	const hasFailed = parsed.tests_failed !== undefined;
+
+	if (!hasPassed && !hasFailed) {
+		return true;
+	}
+
+	if (!hasPassed || !hasFailed) {
+		return false;
+	}
+
+	return (
+		isNonNegativeInteger(parsed.tests_passed) &&
+		isNonNegativeInteger(parsed.tests_failed)
+	);
+}
+
+function parseEvidenceRecord(parsed: unknown): ParsedEvidenceRecord | null {
+	if (!parsed || typeof parsed !== 'object') {
+		return null;
+	}
+
+	const parsedObject = parsed as Record<string, unknown>;
+
+	if (!isBaseEvidenceRecord(parsedObject)) {
+		return null;
+	}
+
+	if (!hasValidOptionalCommonFields(parsedObject)) {
+		return null;
+	}
+
+	if (isReviewEvidenceRecord(parsedObject)) {
+		return {
+			taskId: parsedObject.task_id,
+			type: parsedObject.type,
+		};
+	}
+
+	if (isTestEvidenceRecord(parsedObject)) {
+		return {
+			taskId: parsedObject.task_id,
+			type: parsedObject.type,
+		};
+	}
+
+	if (parsedObject.type === 'review' || parsedObject.type === 'test') {
+		if (
+			parsedObject.type === 'test' &&
+			!hasValidOptionalTestCounts(parsedObject)
+		) {
+			return null;
+		}
+
+		return {
+			taskId: parsedObject.task_id,
+			type: parsedObject.type,
+		};
+	}
+
+	return {
+		taskId: parsedObject.task_id,
+		type: parsedObject.type,
+	};
+}
+
+function readEvidenceFiles(evidenceDir: string): EvidenceFile[] {
 	const evidence: EvidenceFile[] = [];
 
 	// Handle missing evidence directory gracefully
-	if (!fs.existsSync(evidenceDir) || !fs.statSync(evidenceDir).isDirectory()) {
+	if (!fs.existsSync(evidenceDir)) {
+		return evidence;
+	}
+
+	let evidenceDirStat: fs.Stats;
+	try {
+		evidenceDirStat = fs.statSync(evidenceDir);
+	} catch {
+		return evidence;
+	}
+
+	if (!evidenceDirStat.isDirectory()) {
 		return evidence;
 	}
 
@@ -108,75 +338,87 @@ function readEvidenceFiles(evidenceDir: string, cwd: string): EvidenceFile[] {
 		return evidence;
 	}
 
+	files.sort((a, b) => a.localeCompare(b));
+
 	// Limit number of files to read
 	const filesToProcess = files.slice(0, MAX_EVIDENCE_FILES);
+	let totalBytesRead = 0;
 
 	for (const filename of filesToProcess) {
-		// Validate filename with regex
-		if (!VALID_EVIDENCE_FILENAME_REGEX.test(filename)) {
+		const expectedFromFilename = parseEvidenceFilename(filename);
+		if (!expectedFromFilename) {
 			continue;
 		}
 
 		const filePath = path.join(evidenceDir, filename);
+		const evidenceDirResolved = path.resolve(evidenceDir);
+		if (!isPathWithinBase(filePath, evidenceDirResolved)) {
+			continue;
+		}
 
-		// Security check: ensure symlinks don't escape .swarm/evidence/
+		let fd: number | null = null;
 		try {
-			const resolvedPath = path.resolve(filePath);
-			const evidenceDirResolved = path.resolve(evidenceDir);
+			const noFollowFlag =
+				typeof fs.constants.O_NOFOLLOW === 'number'
+					? fs.constants.O_NOFOLLOW
+					: 0;
+			fd = fs.openSync(filePath, fs.constants.O_RDONLY | noFollowFlag);
 
-			if (!resolvedPath.startsWith(evidenceDirResolved)) {
-				// Symlink points outside evidence directory - skip
-				continue;
-			}
-
-			// Check it's still a file (not a directory)
-			const stat = fs.lstatSync(filePath);
+			const stat = fs.fstatSync(fd);
 			if (!stat.isFile()) {
 				continue;
 			}
-		} catch {
-			// Skip files that can't be stat'd
-			continue;
-		}
-
-		// Check file size
-		let fileStat: fs.Stats;
-		try {
-			fileStat = fs.statSync(filePath);
-			if (fileStat.size > MAX_FILE_SIZE_BYTES) {
-				continue; // Skip oversized files
+			if (stat.size > MAX_FILE_SIZE_BYTES) {
+				continue;
 			}
-		} catch {
-			continue;
-		}
+			if (totalBytesRead + stat.size > MAX_TOTAL_EVIDENCE_BYTES) {
+				continue;
+			}
 
-		// Read and parse JSON
-		let content: string;
-		try {
-			content = fs.readFileSync(filePath, 'utf-8');
-		} catch {
-			continue;
-		}
+			const pathStat = fs.lstatSync(filePath);
+			if (pathStat.isSymbolicLink()) {
+				continue;
+			}
+			if (pathStat.dev !== stat.dev || pathStat.ino !== stat.ino) {
+				continue;
+			}
 
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(content);
-		} catch {
-			// Skip corrupt/unparseable JSON files
-			continue;
-		}
+			const content = fs.readFileSync(fd, 'utf-8');
+			totalBytesRead += stat.size;
 
-		// Validate structure
-		if (
-			parsed &&
-			typeof parsed === 'object' &&
-			typeof (parsed as Record<string, unknown>).task_id === 'string' &&
-			typeof (parsed as Record<string, unknown>).type === 'string'
-		) {
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(content);
+			} catch {
+				continue;
+			}
+
+			const parsedEvidence = parseEvidenceRecord(parsed);
+			if (!parsedEvidence) {
+				continue;
+			}
+
+			if (
+				parsedEvidence.taskId !== expectedFromFilename.taskId ||
+				parsedEvidence.type !== expectedFromFilename.type
+			) {
+				continue;
+			}
+
 			evidence.push({
-				taskId: (parsed as Record<string, unknown>).task_id as string,
-				type: (parsed as Record<string, unknown>).type as string,
+				taskId: parsedEvidence.taskId,
+				type: parsedEvidence.type,
 			});
+		} catch {
+			// Ignore unreadable or race-affected entries and continue.
+		} finally {
+			if (fd !== null) {
+				try {
+					fs.closeSync(fd);
+				} catch {
+					// Ignore close errors and continue processing other files.
+				}
+			}
 		}
 	}
 
@@ -203,10 +445,6 @@ function analyzeGaps(
 
 	for (const task of completedTasks) {
 		const taskEvidence = evidenceByTask.get(task.taskId) || new Set();
-		const requiredSet = new Set(requiredTypes.map((t) => t.toLowerCase()));
-		const presentSet = new Set(
-			[...taskEvidence].filter((t) => requiredSet.has(t.toLowerCase())),
-		);
 
 		const missing: string[] = [];
 		const present: string[] = [];
@@ -266,8 +504,9 @@ export const evidence_check: ReturnType<typeof tool> = tool({
 		// Get current working directory
 		const cwd = process.cwd();
 
-		// Validate required_types
-		const requiredTypesValue = requiredTypesInput || 'review,test';
+		// Validate required_types (if provided) and preserve secure defaults
+		const defaultRequiredTypesValue = 'review,test';
+		const requiredTypesValue = requiredTypesInput ?? defaultRequiredTypesValue;
 		const validationError = validateRequiredTypes(requiredTypesValue);
 		if (validationError) {
 			const errorResult = {
@@ -281,11 +520,19 @@ export const evidence_check: ReturnType<typeof tool> = tool({
 			return JSON.stringify(errorResult, null, 2);
 		}
 
-		// Parse required types
-		const requiredTypes = requiredTypesValue
-			.split(',')
-			.map((t) => t.trim())
-			.filter((t) => t.length > 0);
+		const parsedRequiredTypes = parseRequiredTypes(requiredTypesValue);
+		if ('error' in parsedRequiredTypes) {
+			const errorResult = {
+				error: `invalid required_types: ${parsedRequiredTypes.error}`,
+				completedTasks: [],
+				tasksWithFullEvidence: [],
+				completeness: 0,
+				requiredTypes: [],
+				gaps: [],
+			};
+			return JSON.stringify(errorResult, null, 2);
+		}
+		const requiredTypes = parsedRequiredTypes.types;
 
 		// Read plan file
 		const planPath = path.join(cwd, PLAN_FILE);
@@ -331,7 +578,21 @@ export const evidence_check: ReturnType<typeof tool> = tool({
 
 		// Read evidence files
 		const evidenceDir = path.join(cwd, EVIDENCE_DIR);
-		const evidence = readEvidenceFiles(evidenceDir, cwd);
+
+		// Security check: ensure evidence directory path is within .swarm/
+		if (!isPathWithinSwarm(evidenceDir, cwd)) {
+			const errorResult = {
+				error: 'evidence directory path validation failed',
+				completedTasks: [],
+				tasksWithFullEvidence: [],
+				completeness: 0,
+				requiredTypes: [],
+				gaps: [],
+			};
+			return JSON.stringify(errorResult, null, 2);
+		}
+
+		const evidence = readEvidenceFiles(evidenceDir);
 
 		// Analyze gaps
 		const { tasksWithFullEvidence, gaps } = analyzeGaps(

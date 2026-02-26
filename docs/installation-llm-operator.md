@@ -115,9 +115,9 @@ Use the user-approved config. If not provided, use this minimum valid config:
 Start OpenCode in the project and run:
 
 ```text
-/swarm status
-/swarm agents
-/swarm config
+/swarm-status
+/swarm-agents
+/swarm-config
 ```
 
 Success criteria:
@@ -125,13 +125,18 @@ Success criteria:
 
 ### Step A6: Verify v6.8 tools
 
-Ask architect:
+Run canonical slash commands directly:
+
+```text
+/swarm-status
+```
+
+Then ask architect:
 
 ```text
 @mega_architect run todo_extract and complexity_hotspots and summarize outputs
 @mega_architect run evidence_check
 @mega_architect run pkg_audit ecosystem:auto
-@mega_architect run /swarm status
 ```
 
 If API routes/spec exist, also run:
@@ -196,8 +201,8 @@ opencode
 Then execute:
 
 ```text
-/swarm status
-/swarm config
+/swarm-status
+/swarm-config
 @mega_architect run todo_extract
 @mega_architect run pkg_audit ecosystem:auto
 ```
@@ -251,8 +256,8 @@ opencode
 Run:
 
 ```text
-/swarm status
-/swarm config
+/swarm-status
+/swarm-config
 @mega_architect run todo_extract
 ```
 
@@ -263,7 +268,7 @@ Return PASS only if all are true:
 - [ ] Plugin installed
 - [ ] `opencode.json` includes `opencode-swarm`
 - [ ] swarm config file exists and parses
-- [ ] `/swarm status` works
+- [ ] `/swarm-status` works
 - [ ] `@mega_architect` is callable
 - [ ] v6.8 tools callable (`todo_extract`, `evidence_check`, `pkg_audit`, `complexity_hotspots`, `schema_drift` when applicable)
 - [ ] Background automation enabled by default (`plan_sync: true`, `evidence_auto_summaries: true`)
@@ -281,7 +286,7 @@ Checks:
 - Plugin install: PASS|FAIL
 - OpenCode plugin registration: PASS|FAIL
 - Swarm config presence: PASS|FAIL
-- /swarm status: PASS|FAIL
+- /swarm-status: PASS|FAIL
 - v6.8 tools callable: PASS|FAIL
 - Background automation defaults: PASS|FAIL
 

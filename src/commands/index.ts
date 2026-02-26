@@ -15,6 +15,13 @@ import { handleExportCommand } from './export';
 import { handleHistoryCommand } from './history';
 import { handlePlanCommand } from './plan';
 import { handlePreflightCommand } from './preflight';
+import {
+	LEGACY_SWARM_PHRASE_TO_CANONICAL_MESSAGE_ONLY,
+	normalizeLegacySwarmPhraseForLookup,
+	SWARM_COMMAND_ORDER,
+	SWARM_COMMAND_REGISTRY,
+	type SwarmCommandKey,
+} from './registry';
 import { handleResetCommand } from './reset';
 import { handleRetrieveCommand } from './retrieve';
 import { handleStatusCommand } from './status';
@@ -40,23 +47,96 @@ export { handleSyncPlanCommand } from './sync-plan';
 const HELP_TEXT = [
 	'## Swarm Commands',
 	'',
-	'- `/swarm status` — Show current swarm state',
-	'- `/swarm plan [phase]` — Show plan (optionally filter by phase number)',
-	'- `/swarm agents` — List registered agents',
-	'- `/swarm history` — Show completed phases summary',
-	'- `/swarm config` — Show current resolved configuration',
-	'- `/swarm config doctor` — Run config doctor checks',
-	'- `/swarm evidence [taskId]` — Show evidence bundles',
-	'- `/swarm evidence summary` — Generate evidence summary with completion ratio and blockers',
-	'- `/swarm archive [--dry-run]` — Archive old evidence bundles',
-	'- `/swarm diagnose` — Run health check on swarm state',
-	'- `/swarm preflight` — Run preflight automation checks',
-	'- `/swarm sync-plan` — Ensure plan.json and plan.md are synced',
-	'- `/swarm benchmark [--cumulative] [--ci-gate]` — Show performance metrics',
-	'- `/swarm export` — Export plan and context as JSON',
-	'- `/swarm reset --confirm` — Clear swarm state files',
-	'- `/swarm retrieve <id>` — Retrieve full output from a summary',
+	'Use canonical `/swarm-*` commands:',
+	...SWARM_COMMAND_ORDER.map(
+		(key) => `- \`${SWARM_COMMAND_REGISTRY[key].usage}\``,
+	),
 ].join('\n');
+
+const LEGACY_REMOVAL_HEADER =
+	'The `/swarm` command was removed. Use canonical `/swarm-*` commands instead.';
+
+const LEGACY_NORMALIZED_PHRASE_ENTRIES = Object.entries(
+	LEGACY_SWARM_PHRASE_TO_CANONICAL_MESSAGE_ONLY,
+)
+	.map(([legacyPhrase, canonicalCommand]) => ({
+		normalizedPhrase: normalizeLegacySwarmPhraseForLookup(legacyPhrase),
+		canonicalCommand,
+	}))
+	.sort(
+		(a, b) =>
+			b.normalizedPhrase.length - a.normalizedPhrase.length ||
+			a.normalizedPhrase.localeCompare(b.normalizedPhrase),
+	);
+
+function findLegacyCanonicalReplacement(
+	legacyArguments: string,
+): SwarmCommandKey | undefined {
+	const rawArguments = legacyArguments.trim().toLowerCase().replace(/^\/+/, '');
+	if (rawArguments.length === 0) {
+		return undefined;
+	}
+
+	const rawTokens = rawArguments.split(/\s+/).filter(Boolean);
+	if (rawTokens.length === 0) {
+		return undefined;
+	}
+
+	const normalizedTokenGroups = rawTokens.map((token) =>
+		normalizeLegacySwarmPhraseForLookup(token).split(' ').filter(Boolean),
+	);
+	const normalizedTokens = normalizedTokenGroups.flat();
+	if (normalizedTokens.length === 0) {
+		return undefined;
+	}
+
+	const phraseBoundaryTokenCounts = new Set<number>();
+	let cumulativeTokenCount = 0;
+	for (const tokenGroup of normalizedTokenGroups) {
+		cumulativeTokenCount += tokenGroup.length;
+		phraseBoundaryTokenCounts.add(cumulativeTokenCount);
+	}
+
+	for (const legacyPhraseEntry of LEGACY_NORMALIZED_PHRASE_ENTRIES) {
+		const legacyPhraseTokens = legacyPhraseEntry.normalizedPhrase.split(' ');
+		if (normalizedTokens.length < legacyPhraseTokens.length) {
+			continue;
+		}
+
+		if (!phraseBoundaryTokenCounts.has(legacyPhraseTokens.length)) {
+			continue;
+		}
+
+		const phraseMatches = legacyPhraseTokens.every(
+			(token, index) => normalizedTokens[index] === token,
+		);
+		if (phraseMatches) {
+			return legacyPhraseEntry.canonicalCommand;
+		}
+	}
+
+	return undefined;
+}
+
+function getLegacyRemovalGuidance(legacyArguments: string): string {
+	const replacementCommand = findLegacyCanonicalReplacement(legacyArguments);
+	if (!replacementCommand) {
+		return [
+			LEGACY_REMOVAL_HEADER,
+			'',
+			'Run one of these commands:',
+			...SWARM_COMMAND_ORDER.map(
+				(key) => `- \`${SWARM_COMMAND_REGISTRY[key].usage}\``,
+			),
+		].join('\n');
+	}
+
+	return [
+		LEGACY_REMOVAL_HEADER,
+		'',
+		`Use \`${SWARM_COMMAND_REGISTRY[replacementCommand].usage}\` for this request.`,
+	].join('\n');
+}
 
 /**
  * Creates a command.execute.before handler for /swarm commands.
@@ -70,25 +150,36 @@ export function createSwarmCommandHandler(
 	output: { parts: unknown[] },
 ) => Promise<void> {
 	return async (input, output) => {
-		// Ignore non-swarm commands
-		if (input.command !== 'swarm') {
+		if (input.command === 'swarm') {
+			output.parts = [
+				{
+					type: 'text',
+					text: getLegacyRemovalGuidance(input.arguments),
+				} as unknown as (typeof output.parts)[number],
+			];
 			return;
 		}
 
+		if (!(input.command in SWARM_COMMAND_REGISTRY)) {
+			return;
+		}
+
+		const canonicalCommand = input.command as SwarmCommandKey;
+
 		// Parse arguments
 		const tokens = input.arguments.trim().split(/\s+/).filter(Boolean);
-		const [subcommand, ...args] = tokens;
+		const args = tokens;
 
 		let text: string;
 
-		switch (subcommand) {
-			case 'status':
+		switch (canonicalCommand) {
+			case 'swarm-status':
 				text = await handleStatusCommand(directory, agents);
 				break;
-			case 'plan':
+			case 'swarm-plan':
 				text = await handlePlanCommand(directory, args);
 				break;
-			case 'agents': {
+			case 'swarm-agents': {
 				// Load guardrails config for profile display
 				const pluginConfig = loadPluginConfig(directory);
 				const guardrailsConfig = pluginConfig?.guardrails
@@ -97,50 +188,44 @@ export function createSwarmCommandHandler(
 				text = handleAgentsCommand(agents, guardrailsConfig);
 				break;
 			}
-			case 'archive':
+			case 'swarm-archive':
 				text = await handleArchiveCommand(directory, args);
 				break;
-			case 'history':
+			case 'swarm-history':
 				text = await handleHistoryCommand(directory, args);
 				break;
-			case 'config':
-				if (args[0] === 'doctor') {
-					// Handle /swarm config doctor
-					text = await handleDoctorCommand(directory, args.slice(1));
-				} else {
-					text = await handleConfigCommand(directory, args);
-				}
+			case 'swarm-config':
+				text = await handleConfigCommand(directory, args);
 				break;
-			case 'doctor':
-				// Also support /swarm doctor as shortcut
+			case 'swarm-config-doctor':
+			case 'swarm-doctor':
 				text = await handleDoctorCommand(directory, args);
 				break;
-			case 'evidence':
-				if (args[0] === 'summary') {
-					text = await handleEvidenceSummaryCommand(directory);
-				} else {
-					text = await handleEvidenceCommand(directory, args);
-				}
+			case 'swarm-evidence':
+				text = await handleEvidenceCommand(directory, args);
 				break;
-			case 'diagnose':
+			case 'swarm-evidence-summary':
+				text = await handleEvidenceSummaryCommand(directory);
+				break;
+			case 'swarm-diagnose':
 				text = await handleDiagnoseCommand(directory, args);
 				break;
-			case 'preflight':
+			case 'swarm-preflight':
 				text = await handlePreflightCommand(directory, args);
 				break;
-			case 'sync-plan':
+			case 'swarm-sync-plan':
 				text = await handleSyncPlanCommand(directory, args);
 				break;
-			case 'benchmark':
+			case 'swarm-benchmark':
 				text = await handleBenchmarkCommand(directory, args);
 				break;
-			case 'export':
+			case 'swarm-export':
 				text = await handleExportCommand(directory, args);
 				break;
-			case 'reset':
+			case 'swarm-reset':
 				text = await handleResetCommand(directory, args);
 				break;
-			case 'retrieve':
+			case 'swarm-retrieve':
 				text = await handleRetrieveCommand(directory, args);
 				break;
 			default:

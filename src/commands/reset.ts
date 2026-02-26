@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import { validateSwarmPath } from '../hooks/utils';
 
 /**
- * Handles the /swarm reset command.
+ * Handles the /swarm-reset command.
  * Clears plan.md and context.md from .swarm/ directory.
  * Requires --confirm flag as a safety gate.
  */
@@ -18,9 +18,9 @@ export async function handleResetCommand(
 			'',
 			'⚠️ This will delete plan.md and context.md from .swarm/',
 			'',
-			'**Tip**: Run `/swarm export` first to backup your state.',
+			'**Tip**: Run `/swarm-export` first to backup your state.',
 			'',
-			'To confirm, run: `/swarm reset --confirm`',
+			'To confirm, run: `/swarm-reset --confirm`',
 		].join('\n');
 	}
 

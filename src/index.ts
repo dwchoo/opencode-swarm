@@ -9,6 +9,10 @@ import {
 	type PreflightTriggerManager,
 } from './background';
 import { createSwarmCommandHandler } from './commands';
+import {
+	SWARM_COMMAND_ORDER,
+	SWARM_COMMAND_REGISTRY,
+} from './commands/registry';
 import { loadPluginConfigWithMeta } from './config';
 import { ORCHESTRATOR_NAME } from './config/constants';
 import {
@@ -316,18 +320,32 @@ const OpenCodeSwarm: Plugin = async (ctx) => {
 				Object.assign(opencodeConfig.agent, agents);
 			}
 
-			// Register /swarm command
-			opencodeConfig.command = {
-				...((opencodeConfig.command as Record<string, unknown>) || {}),
-				swarm: {
+			// Register canonical /swarm-* commands from registry
+			const canonicalSwarmCommands = SWARM_COMMAND_ORDER.reduce<
+				Record<string, unknown>
+			>((acc, key) => {
+				const usage = SWARM_COMMAND_REGISTRY[key].usage;
+				const commandKey = usage.replace(/^\//, '');
+				acc[commandKey] = {
 					template: '$ARGUMENTS',
-					description: 'Swarm management commands',
-				},
+					description: `Swarm command (${usage})`,
+				};
+				return acc;
+			}, {});
+
+			const mergedCommands = {
+				...((opencodeConfig.command as Record<string, unknown>) || {}),
+			};
+			delete mergedCommands.swarm;
+
+			opencodeConfig.command = {
+				...mergedCommands,
+				...canonicalSwarmCommands,
 			};
 
 			log('Config applied', {
 				agents: Object.keys(agents),
-				commands: ['swarm'],
+				commands: SWARM_COMMAND_ORDER,
 			});
 		},
 

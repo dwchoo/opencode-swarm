@@ -230,9 +230,10 @@ project/
 │   ├── plan.md            # Legacy phased roadmap (migrated to plan.json)
 │   ├── plan.json          # Machine-readable plan with Zod-validated schema
 │   ├── context.md         # Project knowledge, SME cache
-│   ├── evidence/          # Per-task execution evidence
-│   │   ├── 1.1/           # Evidence for task 1.1
-│   │   └── 2.3/           # Evidence for task 2.3
+│   ├── evidence/          # Execution evidence (records and/or bundles)
+│   │   ├── 1_1-review.json # Evidence record for task 1.1 (type=review)
+│   │   ├── 1_1-test.json   # Evidence record for task 1.1 (type=test)
+│   │   └── 2.3/evidence.json # Optional: aggregated bundle for task 2.3
 │   └── history/
 │       ├── phase-1.md     # Archived phase summaries
 │       └── phase-2.md
@@ -242,14 +243,14 @@ project/
 │   ├── state.ts           # Shared swarm state singleton (zero imports)
 │   ├── agents/            # Agent definitions and factory
 │   ├── config/            # Schema, constants, loader
-│   ├── commands/          # Slash command handlers (12 commands)
+│   ├── commands/          # Slash command handlers (canonical /swarm-* set)
 │   │   ├── index.ts       # Factory + dispatcher (createSwarmCommandHandler)
-│   │   ├── status.ts      # /swarm status
-│   │   ├── plan.ts        # /swarm plan [N]
-│   │   ├── agents.ts      # /swarm agents
-│   │   ├── evidence.ts    # /swarm evidence [task]
-│   │   ├── archive.ts     # /swarm archive [--dry-run]
-│   │   └── reset.ts       # /swarm reset --confirm
+│   │   ├── status.ts      # /swarm-status
+│   │   ├── plan.ts        # /swarm-plan [phase]
+│   │   ├── agents.ts      # /swarm-agents
+│   │   ├── evidence.ts    # /swarm-evidence [taskId]
+│   │   ├── archive.ts     # /swarm-archive [--dry-run]
+│   │   └── reset.ts       # /swarm-reset --confirm
 │   ├── hooks/             # Hook handlers
 │   │   ├── index.ts       # Barrel exports
 │   │   ├── utils.ts       # safeHook, composeHandlers, readSwarmFileAsync, estimateTokens
@@ -469,7 +470,7 @@ The hooks system is the foundation of v5.1.x+, extended in v6.0.0 with config-aw
 | `experimental.chat.messages.transform` | `composeHandlers(pipelineTracker, contextBudget)` | Pipeline logging + token budget warnings |
 | `experimental.chat.system.transform` | `systemEnhancerHook` | Inject phase/task/decisions + cross-agent context |
 | `experimental.session.compacting` | `compactionHook` | Enrich compaction with plan.md + context.md data |
-| `command.execute.before` | `safeHook(commandHandler)` | Handle `/swarm` slash commands |
+| `command.execute.before` | `safeHook(commandHandler)` | Handle canonical `/swarm-*` slash commands |
 | `tool.execute.before` | `safeHook(activityHooks.toolBefore)` | Track tool usage per agent |
 | `tool.execute.after` | `safeHook(activityHooks.toolAfter)` | Record tool results + trigger flush |
 | `chat.message` | `safeHook(delegationHandler)` | Track active agent per session |
@@ -495,14 +496,16 @@ Extracts `TODO`, `FIXME`, and `HACK` annotations across the codebase using regex
 **Safety**: Validates paths against workspace root, rejects shell metacharacters, enforces file size limits
 
 ### `evidence_check` — Completeness Auditor
-Audits completed tasks in `.swarm/evidence/` against required evidence types (review, test, diff, approval). Identifies missing evidence before marking a phase complete.
+Audits completed tasks in `.swarm/plan.md` against evidence records in `.swarm/evidence/`. Identifies missing evidence before marking a phase complete.
 
 **Usage**: Phase 6 (phase complete) to verify every task has sufficient QA artifacts
 
-**Input**: Task ID pattern (wildcard support)  
-**Output**: JSON with per-task evidence status, missing types, and overall completeness score
+**Input**: `required_types` (optional) — comma-separated evidence types required per completed task (default: `review,test`)  
+**Output**: JSON with `completedTasks`, `tasksWithFullEvidence`, `completeness`, `requiredTypes`, and `gaps[]`
 
-**Safety**: Validates task ID format, skips symlinks, reads JSON with size limits
+**Evidence record format**: `.swarm/evidence/<major>_<minor>-<type>.json` (example: `2_2-review.json`) where the JSON payload includes matching `task_id: "2.2"` and `type: "review"`
+
+**Safety**: Strict filename schema, skips symlinks, ignores invalid/mismatched JSON, enforces file count and size budgets
 
 ### `pkg_audit` — Vulnerability Scanner
 Wraps `npm audit`, `pip-audit`, and `cargo audit` via Bun.spawn to identify security vulnerabilities in project dependencies.
@@ -596,19 +599,17 @@ The evidence system persists verifiable execution artifacts per task.
 
 ```
 .swarm/evidence/
-├── 1.1/
-│   └── evidence.json    # EvidenceBundleSchema (array of entries)
-└── 2.3/
-    ├── evidence.json
-    └── diff.patch       # Optional raw diff
+├── 1_1-review.json      # ReviewEvidenceSchema (single record)
+├── 1_1-test.json        # TestEvidenceSchema (single record)
+├── 2_3-diff.json        # DiffEvidenceSchema (single record)
+└── 2.3/evidence.json    # Optional: EvidenceBundleSchema aggregation (array of entries)
 ```
 
 ### Security
 
-- Task IDs are sanitized: regex `^[\w-]+(\.[\w-]+)*$`, rejects `..`, null bytes, control chars
-- Two-layer path validation: sanitize task ID + `validateSwarmPath()` on full path
-- Size limits: JSON 500KB, diff.patch 5MB, total per task 20MB
-- Atomic writes via temp+rename pattern
+- Evidence records used by `evidence_check` must match a strict filename schema (`<major>_<minor>-<type>.json`) and are ignored if the JSON payload doesn't match the filename
+- Evidence bundles (when used) sanitize task IDs (`^[\w-]+(\.[\w-]+)*$`) and validate paths via `validateSwarmPath()`
+- Size limits vary by reader/writer (bundles enforce JSON size limits; `evidence_check` enforces per-file and total parse budgets)
 
 ### Retention
 
@@ -621,29 +622,36 @@ Configurable via `evidence` config:
 
 ## Slash Commands
 
-Twelve commands registered under `/swarm`:
+Canonical slash commands (legacy `/swarm ...` forms removed):
+
+For the authoritative legacy-to-canonical hard-removal matrix, see
+[`docs/installation.md` -> `Slash Commands` -> `Hard-Removal Matrix (Legacy -> Canonical)`](./installation.md#hard-removal-matrix-legacy---canonical).
 
 | Command | Description |
 |---------|-------------|
-| `/swarm status` | Shows current phase, task progress (completed/total), and agent count |
-| `/swarm plan` | Displays full plan.md content |
-| `/swarm plan N` | Displays only Phase N from plan.md |
-| `/swarm agents` | Lists all registered agents with model, temperature, read-only status, and guardrail profiles |
-| `/swarm history` | View completed phases with status icons |
-| `/swarm config` | View current resolved plugin configuration |
-| `/swarm diagnose` | Health check for .swarm/ files, plan structure, and evidence completeness |
-| `/swarm export` | Export plan and context as portable JSON |
-| `/swarm reset --confirm` | Clear swarm state files (with safety gate) |
-| `/swarm evidence [task]` | View evidence bundles for a task or list all tasks with evidence |
-| `/swarm archive [--dry-run]` | Archive old evidence bundles with retention policy |
-| `/swarm benchmark` | Run performance benchmarks and display metrics |
-| `/swarm retrieve [id]` | Retrieve auto-summarized tool outputs by ID |
+| `/swarm-status` | Shows current phase, task progress (completed/total), and agent count |
+| `/swarm-plan [phase]` | Displays full plan.md content or only the requested phase |
+| `/swarm-agents` | Lists all registered agents with model, temperature, read-only status, and guardrail profiles |
+| `/swarm-history` | View completed phases with status icons |
+| `/swarm-config` | View current resolved plugin configuration |
+| `/swarm-config-doctor` | Validate config and show findings (`--fix`/`--restore <id>` supported) |
+| `/swarm-doctor` | Health-check alias command for diagnostics workflows |
+| `/swarm-diagnose` | Health check for `.swarm/` files, plan structure, and evidence completeness |
+| `/swarm-preflight` | Run preflight checks on current plan |
+| `/swarm-sync-plan` | Force plan.md regeneration from plan.json |
+| `/swarm-evidence [taskId]` | View evidence bundles for a task or list all tasks with evidence |
+| `/swarm-evidence-summary` | Generate evidence completion summary artifact |
+| `/swarm-archive [--dry-run]` | Archive old evidence bundles with retention policy |
+| `/swarm-benchmark [--cumulative] [--ci-gate]` | Run performance benchmarks and display metrics |
+| `/swarm-export` | Export plan and context as portable JSON |
+| `/swarm-reset --confirm` | Clear swarm state files (with safety gate) |
+| `/swarm-retrieve <id>` | Retrieve auto-summarized tool outputs by ID |
 
 ### Implementation
 
 Commands are registered in two steps:
-1. **`config` hook** — Adds `swarm` command to OpenCode's command registry
-2. **`command.execute.before` hook** — Intercepts `/swarm` commands and routes to handlers
+1. **`config` hook** — Registers canonical `swarm-*` command keys in OpenCode's command registry
+2. **`command.execute.before` hook** — Intercepts canonical `/swarm-*` commands and routes to handlers
 
 The command handler uses a factory pattern: `createSwarmCommandHandler(directory, agents)` creates a closure over the project directory and agent definitions, returning a handler function.
 
@@ -847,7 +855,7 @@ Startup service that validates and fixes configuration:
 
 **Security:** Defaults to scan-only mode. Autofix requires explicit `automation.capabilities.config_doctor_autofix = true`.
 
-**Backups:** Creates encrypted backups in `.swarm/` before auto-fix. Supports restore via `/swarm config doctor --restore <backup-id>`.
+**Backups:** Creates encrypted backups in `.swarm/` before auto-fix. Supports restore via `/swarm-config-doctor --restore <backup-id>`.
 
 #### Decision Drift Analyzer
 
@@ -875,9 +883,9 @@ Commands expose service functionality without blocking UI:
 
 | Command | Function | Security |
 |---------|----------|----------|
-| `/swarm preflight` | Run preflight checks on current plan | Safe - validation-only |
-| `/swarm config doctor [--fix] [--restore <id>]` | Config Doctor with optional auto-fix and restore | Moderate - auto-fix opt-in |
-| `/swarm sync-plan` | Force plan.md regeneration from plan.json | Safe - read-only |
+| `/swarm-preflight` | Run preflight checks on current plan | Safe - validation-only |
+| `/swarm-config-doctor [--fix] [--restore <id>]` | Config Doctor with optional auto-fix and restore | Moderate - auto-fix opt-in |
+| `/swarm-sync-plan` | Force plan.md regeneration from plan.json | Safe - read-only |
 
 All commands:
 - Non-blocking (fire and forget for background ops)
@@ -942,7 +950,7 @@ Phase Monitor Hook → Preflight Service → Auto-trigger if phase changes
 ```
 
 Benefits:
-- No manual `/swarm preflight` command needed during execution
+- No manual `/swarm-preflight` command needed during execution
 - Consistent preflight checks at every phase boundary
 - Automatic blocker detection before agent execution
 
@@ -978,7 +986,7 @@ Background service that auto-generates evidence summaries:
 - Scheduled generation for long-running tasks
 - Aggregates per-task evidence into phase-level summaries
 - Writes to `.swarm/evidence-summary.json`
-- Triggers via `/swarm evidence summary` command
+- Triggers via `/swarm-evidence-summary` command
 
 ### Configuration Updates
 
@@ -1028,7 +1036,7 @@ Plugin Init
     └── Register PlanSyncWorker (auto-sync plan.json → plan.md)
 ```
 
-#### Slash Command: `/swarm evidence summary`
+#### Slash Command: `/swarm-evidence-summary`
 
 Manual trigger for evidence summary generation:
 

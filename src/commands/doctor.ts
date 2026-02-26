@@ -51,7 +51,7 @@ function formatDoctorMarkdown(result: ConfigDoctorResult): string {
 		lines.push('---');
 		lines.push('');
 		lines.push(
-			'Tip: Some issues can be auto-fixed. Run `/swarm config doctor --fix` to apply fixes.',
+			'Tip: Some issues can be auto-fixed. Run `/swarm-config-doctor --fix` to apply fixes.',
 		);
 	}
 
@@ -59,7 +59,7 @@ function formatDoctorMarkdown(result: ConfigDoctorResult): string {
 }
 
 /**
- * Handle /swarm config doctor command.
+ * Handle /swarm-config-doctor command.
  * Maps to: config doctor service (runConfigDoctor)
  */
 export async function handleDoctorCommand(

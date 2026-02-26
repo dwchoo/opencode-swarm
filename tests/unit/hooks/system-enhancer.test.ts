@@ -255,7 +255,7 @@ This phase is currently active.
 			expect(output.system).toEqual([
 				'Initial system prompt',
 				'[SWARM CONTEXT] Current phase: Phase 1: Hooks Pipeline Enhancement [IN PROGRESS]',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -281,7 +281,7 @@ This phase is currently active.
 			// Only hint appended since plan.md doesn't exist
 			expect(output.system).toEqual([
 				'Initial system prompt',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -308,7 +308,7 @@ This phase is currently active.
 			// Only hint appended since no plan exists
 			expect(output.system).toEqual([
 				'Initial system prompt',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -345,7 +345,7 @@ This plan has header phase info but no IN PROGRESS phase.
 			expect(output.system).toEqual([
 				'Initial system prompt',
 				'[SWARM CONTEXT] Current phase: Phase 2 [PENDING]',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -421,7 +421,7 @@ Testing is underway.
 				'Initial system prompt',
 				'[SWARM CONTEXT] Current phase: Phase 1: Setup [IN PROGRESS]',
 				'[SWARM CONTEXT] Current task: - [ ] 1.2: Add config [SMALL]',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -464,7 +464,7 @@ Testing is underway.
 			expect(output.system).toEqual([
 				'Initial system prompt',
 				'[SWARM CONTEXT] Key decisions: - **Decision A**: Use TypeScript for new code\n- **Decision B**: Prefer composition over inheritance',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -518,7 +518,7 @@ Testing is underway.
 				'[SWARM CONTEXT] Current phase: Phase 1: Setup [IN PROGRESS]',
 				'[SWARM CONTEXT] Current task: - [ ] 1.2: Add config [SMALL]',
 				'[SWARM CONTEXT] Key decisions: - **Decision A**: Use TypeScript for new code\n- **Decision B**: Prefer composition over inheritance',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -558,7 +558,7 @@ Testing is underway.
 				'Initial system prompt',
 				'[SWARM CONTEXT] Current phase: Phase 1: Setup [IN PROGRESS]',
 				'[SWARM CONTEXT] Current task: - [ ] 1.2: Add config [SMALL]',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
@@ -1123,7 +1123,7 @@ ${longActivity}
 			
 			expect(output.system).toEqual([
 				'Initial system prompt',
-				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.',
+				'[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.',
 			]);
 		});
 
