@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { AgentOverrideConfigSchema, SwarmConfigSchema, PluginConfigSchema, GuardrailsConfigSchema, ScoringWeightsSchema, DecisionDecaySchema, TokenRatiosSchema, ScoringConfigSchema, ContextBudgetConfigSchema } from '../../../src/config/schema';
+import { AgentOverrideConfigSchema, SwarmConfigSchema, PluginConfigSchema, GuardrailsConfigSchema, ScoringWeightsSchema, DecisionDecaySchema, TokenRatiosSchema, ScoringConfigSchema, ContextBudgetConfigSchema, PipelineConfigSchema } from '../../../src/config/schema';
 import { DEFAULT_SCORING_CONFIG, resolveScoringConfig } from '../../../src/config/constants';
 
 describe('AgentOverrideConfigSchema', () => {
@@ -851,5 +851,58 @@ describe('resolveScoringConfig', () => {
     expect(result.decision_decay.half_life_hours).toBe(12);
     expect(result.token_ratios.prose).toBe(0.3);
     expect(result.token_ratios.code).toBe(0.5);
+  });
+});
+describe('PipelineConfigSchema', () => {
+  it('accepts empty object and applies defaults', () => {
+    const result = PipelineConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ parallel_precheck: true });
+    }
+  });
+
+  it('accepts parallel_precheck: true', () => {
+    const result = PipelineConfigSchema.safeParse({ parallel_precheck: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ parallel_precheck: true });
+    }
+  });
+
+  it('accepts parallel_precheck: false', () => {
+    const result = PipelineConfigSchema.safeParse({ parallel_precheck: false });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ parallel_precheck: false });
+    }
+  });
+
+  it('rejects parallel_precheck as string', () => {
+    const result = PipelineConfigSchema.safeParse({ parallel_precheck: 'true' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects parallel_precheck as number', () => {
+    const result = PipelineConfigSchema.safeParse({ parallel_precheck: 1 });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('PluginConfigSchema with pipeline', () => {
+  it('accepts pipeline block with parallel_precheck', () => {
+    const result = PluginConfigSchema.safeParse({ pipeline: { parallel_precheck: false } });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.pipeline).toEqual({ parallel_precheck: false });
+    }
+  });
+
+  it('pipeline is optional — absent config still parses', () => {
+    const result = PluginConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.pipeline).toBeUndefined();
+    }
   });
 });

@@ -135,6 +135,16 @@ export declare const PlaceholderScanConfigSchema: z.ZodObject<{
     max_allowed_findings: z.ZodDefault<z.ZodNumber>;
 }, z.core.$strip>;
 export type PlaceholderScanConfig = z.infer<typeof PlaceholderScanConfigSchema>;
+export declare const QualityBudgetConfigSchema: z.ZodObject<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
+    max_complexity_delta: z.ZodDefault<z.ZodNumber>;
+    max_public_api_delta: z.ZodDefault<z.ZodNumber>;
+    max_duplication_ratio: z.ZodDefault<z.ZodNumber>;
+    min_test_to_code_ratio: z.ZodDefault<z.ZodNumber>;
+    enforce_on_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    exclude_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>;
+export type QualityBudgetConfig = z.infer<typeof QualityBudgetConfigSchema>;
 export declare const GateConfigSchema: z.ZodObject<{
     syntax_check: z.ZodDefault<z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;
@@ -154,11 +164,21 @@ export declare const GateConfigSchema: z.ZodObject<{
     build_check: z.ZodDefault<z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;
     }, z.core.$strip>>;
-    quality_budget: z.ZodDefault<z.ZodObject<{
+    quality_budget: z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;
-    }, z.core.$strip>>;
+        max_complexity_delta: z.ZodDefault<z.ZodNumber>;
+        max_public_api_delta: z.ZodDefault<z.ZodNumber>;
+        max_duplication_ratio: z.ZodDefault<z.ZodNumber>;
+        min_test_to_code_ratio: z.ZodDefault<z.ZodNumber>;
+        enforce_on_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        exclude_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
 }, z.core.$strip>;
 export type GateConfig = z.infer<typeof GateConfigSchema>;
+export declare const PipelineConfigSchema: z.ZodObject<{
+    parallel_precheck: z.ZodDefault<z.ZodBoolean>;
+}, z.core.$strip>;
+export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
 export declare const SummaryConfigSchema: z.ZodObject<{
     enabled: z.ZodDefault<z.ZodBoolean>;
     threshold_bytes: z.ZodDefault<z.ZodNumber>;
@@ -335,6 +355,9 @@ export declare const PluginConfigSchema: z.ZodObject<{
         }, z.core.$strip>>>;
     }, z.core.$strip>>>;
     max_iterations: z.ZodDefault<z.ZodNumber>;
+    pipeline: z.ZodOptional<z.ZodObject<{
+        parallel_precheck: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
     qa_retry_limit: z.ZodDefault<z.ZodNumber>;
     inject_phase_reminders: z.ZodDefault<z.ZodBoolean>;
     hooks: z.ZodOptional<z.ZodObject<{
@@ -365,9 +388,15 @@ export declare const PluginConfigSchema: z.ZodObject<{
         build_check: z.ZodDefault<z.ZodObject<{
             enabled: z.ZodDefault<z.ZodBoolean>;
         }, z.core.$strip>>;
-        quality_budget: z.ZodDefault<z.ZodObject<{
+        quality_budget: z.ZodObject<{
             enabled: z.ZodDefault<z.ZodBoolean>;
-        }, z.core.$strip>>;
+            max_complexity_delta: z.ZodDefault<z.ZodNumber>;
+            max_public_api_delta: z.ZodDefault<z.ZodNumber>;
+            max_duplication_ratio: z.ZodDefault<z.ZodNumber>;
+            min_test_to_code_ratio: z.ZodDefault<z.ZodNumber>;
+            enforce_on_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            exclude_globs: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
     }, z.core.$strip>>;
     context_budget: z.ZodOptional<z.ZodObject<{
         enabled: z.ZodDefault<z.ZodBoolean>;

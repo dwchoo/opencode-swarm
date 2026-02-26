@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="https://img.shields.io/badge/version-6.9.0-blue" alt="Version">
+   <img src="https://img.shields.io/badge/version-6.10.0-blue" alt="Version">
    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
    <img src="https://img.shields.io/badge/opencode-plugin-purple" alt="OpenCode Plugin">
    <img src="https://img.shields.io/badge/agents-9-orange" alt="Agents">
@@ -508,6 +508,77 @@ Runs repo-native build/typecheck commands. Ensures code compiles before review.
 
 ### quality_budget - Maintainability Enforcement
 Enforces complexity, API, duplication, and test-to-code ratio budgets. Configurable thresholds.
+
+## Parallel Pre-Check Batch (v6.10.0)
+
+### pre_check_batch - Parallel Verification
+
+Runs four verification tools in parallel for faster QA gate execution:
+- **lint:check** - Code quality verification (hard gate)
+- **secretscan** - Secret detection (hard gate)
+- **sast_scan** - Static security analysis (hard gate)
+- **quality_budget** - Maintainability metrics
+
+**Purpose**: Reduces total gate execution time from ~60s (sequential) to ~15s (parallel) by running independent checks concurrently.
+
+**When to use**: After `build_check` passes and before `@reviewer` — all 4 gates must pass for `gates_passed: true`.
+
+**Usage**:
+```typescript
+const result = await pre_check_batch({
+  directory: ".",
+  files: ["src/auth.ts", "src/session.ts"],
+  sast_threshold: "medium"
+});
+
+// Returns:
+// {
+//   gates_passed: boolean,  // All hard gates passed
+//   lint: { ran, result, error, duration_ms },
+//   secretscan: { ran, result, error, duration_ms },
+//   sast_scan: { ran, result, error, duration_ms },
+//   quality_budget: { ran, result, error, duration_ms },
+//   total_duration_ms: number
+// }
+```
+
+**Hard Gates** (must pass for gates_passed=true):
+- Lint errors → Fix and retry
+- Secrets found → Fix and retry
+- SAST vulnerabilities at/above threshold → Fix and retry
+- Quality budget violations → Refactor or adjust thresholds
+
+**Parallel Execution Safety**:
+- Max 4 concurrent operations via `p-limit`
+- 60-second timeout per tool
+- 500KB output size limit
+- Individual tool failures don't cascade to others
+
+### Configuration
+
+Enable/disable parallel pre-check via `.opencode/swarm.json`:
+
+```json
+{
+  "pipeline": {
+    "parallel_precheck": true  // default: true
+  }
+}
+```
+
+Set to `false` to run gates sequentially (useful for debugging or resource-constrained environments).
+
+### Updated Phase 5 QA Sequence (v6.10.0)
+
+```
+coder → diff → syntax_check → placeholder_scan → imports → 
+lint fix → build_check → pre_check_batch (parallel) → 
+reviewer → security reviewer → test_engineer → coverage check
+```
+
+### Rollback
+
+If parallel execution causes issues, refer to `.swarm/ROLLBACK-pre-check-batch.md` for rollback instructions.
 
 ### Local-Only Guarantee
 All v6.9.0 quality tools run locally without:

@@ -1,3 +1,4 @@
+export { build_check } from './build-check';
 export { checkpoint } from './checkpoint';
 export { complexity_hotspots } from './complexity-hotspots';
 export { type DiffErrorResult, type DiffResult, diff } from './diff';
@@ -9,8 +10,11 @@ export { imports } from './imports';
 export { lint } from './lint';
 export { pkg_audit } from './pkg-audit';
 export { type PlaceholderFinding, type PlaceholderScanInput, type PlaceholderScanResult, placeholderScan, } from './placeholder-scan';
+export { type PreCheckBatchInput, type PreCheckBatchResult, pre_check_batch, runPreCheckBatch, type ToolResult, } from './pre-check-batch';
+export { type QualityBudgetInput, type QualityBudgetResult, qualityBudget, } from './quality-budget';
 export { retrieve_summary } from './retrieve-summary';
 export { type SastScanFinding, type SastScanInput, type SastScanResult, sastScan, } from './sast-scan';
+export { type SbomGenerateInput, type SbomGenerateResult, sbom_generate, } from './sbom-generate';
 export { schema_drift } from './schema-drift';
 export { type SecretFinding, type SecretscanResult, secretscan, } from './secretscan';
 export { symbols } from './symbols';

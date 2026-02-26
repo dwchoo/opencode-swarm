@@ -1,6 +1,6 @@
 {
 	"name": "opencode-swarm",
-	"version": "6.9.0",
+	"version": "6.10.0",
 	"description": "Architect-centric agentic swarm plugin for OpenCode - hub-and-spoke orchestration with SME consultation, code generation, and QA review",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -42,6 +42,7 @@
 		"@opencode-ai/plugin": "^1.1.53",
 		"@opencode-ai/sdk": "^1.1.53",
 		"@vscode/tree-sitter-wasm": "^0.3.0",
+		"p-limit": "^7.3.0",
 		"web-tree-sitter": "^0.25.0",
 		"zod": "^4.1.8"
 	},

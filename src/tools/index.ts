@@ -16,6 +16,14 @@ export {
 	type PlaceholderScanResult,
 	placeholderScan,
 } from './placeholder-scan';
+// v6.10
+export {
+	type PreCheckBatchInput,
+	type PreCheckBatchResult,
+	pre_check_batch,
+	runPreCheckBatch,
+	type ToolResult,
+} from './pre-check-batch';
 export {
 	type QualityBudgetInput,
 	type QualityBudgetResult,

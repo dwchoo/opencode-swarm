@@ -310,9 +310,26 @@ export declare const SbomEvidenceSchema: z.ZodObject<{
         info: "info";
     }>;
     summary: z.ZodString;
-    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"sbom">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    components: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        version: z.ZodString;
+        type: z.ZodEnum<{
+            library: "library";
+            framework: "framework";
+            application: "application";
+        }>;
+        purl: z.ZodOptional<z.ZodString>;
+        license: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+    metadata: z.ZodObject<{
+        timestamp: z.ZodString;
+        tool: z.ZodString;
+        tool_version: z.ZodString;
+    }, z.core.$strip>;
+    files: z.ZodArray<z.ZodString>;
+    components_count: z.ZodNumber;
+    output_path: z.ZodString;
 }, z.core.$strip>;
 export type SbomEvidence = z.infer<typeof SbomEvidenceSchema>;
 export declare const BuildEvidenceSchema: z.ZodObject<{
@@ -329,7 +346,23 @@ export declare const BuildEvidenceSchema: z.ZodObject<{
     summary: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"build">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    runs: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        kind: z.ZodEnum<{
+            test: "test";
+            build: "build";
+            typecheck: "typecheck";
+        }>;
+        command: z.ZodString;
+        cwd: z.ZodString;
+        exit_code: z.ZodNumber;
+        duration_ms: z.ZodNumber;
+        stdout_tail: z.ZodString;
+        stderr_tail: z.ZodString;
+    }, z.core.$strip>>>;
+    files_scanned: z.ZodNumber;
+    runs_count: z.ZodNumber;
+    failed_count: z.ZodNumber;
+    skipped_reason: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export type BuildEvidence = z.infer<typeof BuildEvidenceSchema>;
 export declare const QualityBudgetEvidenceSchema: z.ZodObject<{
@@ -346,7 +379,33 @@ export declare const QualityBudgetEvidenceSchema: z.ZodObject<{
     summary: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"quality_budget">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    metrics: z.ZodObject<{
+        complexity_delta: z.ZodNumber;
+        public_api_delta: z.ZodNumber;
+        duplication_ratio: z.ZodNumber;
+        test_to_code_ratio: z.ZodNumber;
+    }, z.core.$strip>;
+    thresholds: z.ZodObject<{
+        max_complexity_delta: z.ZodNumber;
+        max_public_api_delta: z.ZodNumber;
+        max_duplication_ratio: z.ZodNumber;
+        min_test_to_code_ratio: z.ZodNumber;
+    }, z.core.$strip>;
+    violations: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        type: z.ZodEnum<{
+            complexity: "complexity";
+            api: "api";
+            duplication: "duplication";
+            test_ratio: "test_ratio";
+        }>;
+        message: z.ZodString;
+        severity: z.ZodEnum<{
+            error: "error";
+            warning: "warning";
+        }>;
+        files: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>>;
+    files_analyzed: z.ZodArray<z.ZodString>;
 }, z.core.$strip>;
 export type QualityBudgetEvidence = z.infer<typeof QualityBudgetEvidenceSchema>;
 export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -587,9 +646,26 @@ export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
         info: "info";
     }>;
     summary: z.ZodString;
-    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"sbom">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    components: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        version: z.ZodString;
+        type: z.ZodEnum<{
+            library: "library";
+            framework: "framework";
+            application: "application";
+        }>;
+        purl: z.ZodOptional<z.ZodString>;
+        license: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+    metadata: z.ZodObject<{
+        timestamp: z.ZodString;
+        tool: z.ZodString;
+        tool_version: z.ZodString;
+    }, z.core.$strip>;
+    files: z.ZodArray<z.ZodString>;
+    components_count: z.ZodNumber;
+    output_path: z.ZodString;
 }, z.core.$strip>, z.ZodObject<{
     task_id: z.ZodString;
     timestamp: z.ZodString;
@@ -604,7 +680,23 @@ export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
     summary: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"build">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    runs: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        kind: z.ZodEnum<{
+            test: "test";
+            build: "build";
+            typecheck: "typecheck";
+        }>;
+        command: z.ZodString;
+        cwd: z.ZodString;
+        exit_code: z.ZodNumber;
+        duration_ms: z.ZodNumber;
+        stdout_tail: z.ZodString;
+        stderr_tail: z.ZodString;
+    }, z.core.$strip>>>;
+    files_scanned: z.ZodNumber;
+    runs_count: z.ZodNumber;
+    failed_count: z.ZodNumber;
+    skipped_reason: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>, z.ZodObject<{
     task_id: z.ZodString;
     timestamp: z.ZodString;
@@ -619,7 +711,33 @@ export declare const EvidenceSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
     summary: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     type: z.ZodLiteral<"quality_budget">;
-    details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    metrics: z.ZodObject<{
+        complexity_delta: z.ZodNumber;
+        public_api_delta: z.ZodNumber;
+        duplication_ratio: z.ZodNumber;
+        test_to_code_ratio: z.ZodNumber;
+    }, z.core.$strip>;
+    thresholds: z.ZodObject<{
+        max_complexity_delta: z.ZodNumber;
+        max_public_api_delta: z.ZodNumber;
+        max_duplication_ratio: z.ZodNumber;
+        min_test_to_code_ratio: z.ZodNumber;
+    }, z.core.$strip>;
+    violations: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        type: z.ZodEnum<{
+            complexity: "complexity";
+            api: "api";
+            duplication: "duplication";
+            test_ratio: "test_ratio";
+        }>;
+        message: z.ZodString;
+        severity: z.ZodEnum<{
+            error: "error";
+            warning: "warning";
+        }>;
+        files: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>>;
+    files_analyzed: z.ZodArray<z.ZodString>;
 }, z.core.$strip>], "type">;
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export declare const EvidenceBundleSchema: z.ZodObject<{
@@ -863,9 +981,26 @@ export declare const EvidenceBundleSchema: z.ZodObject<{
             info: "info";
         }>;
         summary: z.ZodString;
-        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
         type: z.ZodLiteral<"sbom">;
-        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        components: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodString;
+            type: z.ZodEnum<{
+                library: "library";
+                framework: "framework";
+                application: "application";
+            }>;
+            purl: z.ZodOptional<z.ZodString>;
+            license: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>>;
+        metadata: z.ZodObject<{
+            timestamp: z.ZodString;
+            tool: z.ZodString;
+            tool_version: z.ZodString;
+        }, z.core.$strip>;
+        files: z.ZodArray<z.ZodString>;
+        components_count: z.ZodNumber;
+        output_path: z.ZodString;
     }, z.core.$strip>, z.ZodObject<{
         task_id: z.ZodString;
         timestamp: z.ZodString;
@@ -880,7 +1015,23 @@ export declare const EvidenceBundleSchema: z.ZodObject<{
         summary: z.ZodString;
         metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
         type: z.ZodLiteral<"build">;
-        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        runs: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            kind: z.ZodEnum<{
+                test: "test";
+                build: "build";
+                typecheck: "typecheck";
+            }>;
+            command: z.ZodString;
+            cwd: z.ZodString;
+            exit_code: z.ZodNumber;
+            duration_ms: z.ZodNumber;
+            stdout_tail: z.ZodString;
+            stderr_tail: z.ZodString;
+        }, z.core.$strip>>>;
+        files_scanned: z.ZodNumber;
+        runs_count: z.ZodNumber;
+        failed_count: z.ZodNumber;
+        skipped_reason: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>, z.ZodObject<{
         task_id: z.ZodString;
         timestamp: z.ZodString;
@@ -895,7 +1046,33 @@ export declare const EvidenceBundleSchema: z.ZodObject<{
         summary: z.ZodString;
         metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
         type: z.ZodLiteral<"quality_budget">;
-        details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        metrics: z.ZodObject<{
+            complexity_delta: z.ZodNumber;
+            public_api_delta: z.ZodNumber;
+            duplication_ratio: z.ZodNumber;
+            test_to_code_ratio: z.ZodNumber;
+        }, z.core.$strip>;
+        thresholds: z.ZodObject<{
+            max_complexity_delta: z.ZodNumber;
+            max_public_api_delta: z.ZodNumber;
+            max_duplication_ratio: z.ZodNumber;
+            min_test_to_code_ratio: z.ZodNumber;
+        }, z.core.$strip>;
+        violations: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            type: z.ZodEnum<{
+                complexity: "complexity";
+                api: "api";
+                duplication: "duplication";
+                test_ratio: "test_ratio";
+            }>;
+            message: z.ZodString;
+            severity: z.ZodEnum<{
+                error: "error";
+                warning: "warning";
+            }>;
+            files: z.ZodArray<z.ZodString>;
+        }, z.core.$strip>>>;
+        files_analyzed: z.ZodArray<z.ZodString>;
     }, z.core.$strip>], "type">>>;
     created_at: z.ZodString;
     updated_at: z.ZodString;

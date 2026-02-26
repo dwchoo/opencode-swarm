@@ -211,11 +211,15 @@ For each task in current phase:
     │       ├── Validates code compiles correctly
     │       └── If build fails → Fix before review
 
-    ├── 5k. quality_budget enforces maintainability (v6.9.0)
-    │       ├── Checks complexity delta limits
-    │       ├── Validates API surface changes
-    │       ├── Enforces test-to-code ratio
-    │       └── If budgets exceeded → Refactor or adjust limits
+    ├── 5k. pre_check_batch runs parallel verification (v6.10.0)
+    │       ├── Runs 4 tools in parallel with p-limit (max 4 concurrent):
+    │       │   ├── lint:check (code quality verification - hard gate)
+    │       │   ├── secretscan (secret detection - hard gate)
+    │       │   ├── sast_scan (security analysis - hard gate)
+    │       │   └── quality_budget (maintainability metrics)
+    │       ├── Returns unified result with gates_passed boolean
+    │       ├── If gates_passed === false → Return to coder with specific failures
+    │       └── If gates_passed === true → Proceed to reviewer
 
     ├── 5l. @reviewer reviews (correctness, edge-cases, performance)
     │       ├── APPROVED → Continue
@@ -467,7 +471,7 @@ QA per task provides:
 
 ### v6.9.0 Quality Gates (6 New Gates)
 
-v6.9.0 "Quality & Anti-Slop Tooling" adds 6 automated gates to the pre-reviewer pipeline:
+v6.9.0 "Quality & Anti-Slop Tooling" adds 6 automated gates to the pre-reviewer pipeline. v6.10.0 adds parallel batch execution for faster QA gates:
 
 | Gate | Purpose | Local-Only |
 |------|---------|------------|
@@ -476,6 +480,7 @@ v6.9.0 "Quality & Anti-Slop Tooling" adds 6 automated gates to the pre-reviewer 
 | `sast_scan` | Static security analysis with 63+ rules | ✅ |
 | `sbom_generate` | CycloneDX SBOM generation for dependencies | ✅ |
 | `build_check` | Build/typecheck verification | ✅ |
+| `pre_check_batch` | Parallel verification batch (4x faster) | ✅ |
 | `quality_budget` | Maintainability threshold enforcement | ✅ |
 
 **Local-Only Guarantee**: All v6.9.0 gates run without Docker, network connections, external APIs, or cloud services. Optional enhancement via Semgrep (if already on PATH).
@@ -679,6 +684,7 @@ Six new automated gates enforce code quality before human review. All gates run 
 | `sast_scan` | Static security analysis (63 rules) | Return to coder for fix |
 | `sbom_generate` | CycloneDX SBOM generation | Log for audit trail |
 | `build_check` | Build/typecheck verification | Return to coder for fix |
+| `pre_check_batch` | Parallel verification (v6.10.0) | Return to coder for fix |
 | `quality_budget` | Maintainability enforcement | Return to coder or adjust limits |
 
 ### syntax_check - Parse Validation
@@ -764,6 +770,47 @@ Enforces configurable thresholds on code changes:
 
 **Fail condition**: Budget exceeded
 **Resolution**: Refactor code or adjust budget thresholds
+
+### pre_check_batch - Parallel Verification (v6.10.0)
+
+Runs four verification tools in parallel for 4x faster gate execution:
+
+| Tool | Purpose | Gate Type |
+|------|---------|-----------|
+| `lint:check` | Code quality verification | Hard gate |
+| `secretscan` | Secret/credential detection | Hard gate |
+| `sast_scan` | Static security analysis | Hard gate |
+| `quality_budget` | Maintainability metrics | Hard gate |
+
+**Parallel Execution**:
+- Uses `p-limit` with max 4 concurrent operations
+- 60-second timeout per tool
+- 500KB combined output limit
+- Individual failures don't cascade
+
+**Return Value**:
+```json
+{
+  "gates_passed": true,
+  "lint": { "ran": true, "result": {}, "duration_ms": 1200 },
+  "secretscan": { "ran": true, "result": {}, "duration_ms": 800 },
+  "sast_scan": { "ran": true, "result": {}, "duration_ms": 2500 },
+  "quality_budget": { "ran": true, "result": {}, "duration_ms": 400 },
+  "total_duration_ms": 3200
+}
+```
+
+**Configuration**:
+```json
+{
+  "pipeline": {
+    "parallel_precheck": true  // default: true
+  }
+}
+```
+
+**Fail condition**: Any hard gate fails (lint errors, secrets found, SAST findings, budget exceeded)
+**Resolution**: Fix specific failures identified in tool results and retry
 
 ### Local-Only Guarantee
 

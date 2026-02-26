@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { tool } from '@opencode-ai/plugin';
 
 // ============ Constants ============
@@ -53,25 +54,32 @@ export function getLinterCommand(
 ): string[] {
 	const isWindows = process.platform === 'win32';
 
+	// Get path to local node_modules/.bin
+	const binDir = path.join(process.cwd(), 'node_modules', '.bin');
+	const biomeBin = isWindows
+		? path.join(binDir, 'biome.EXE')
+		: path.join(binDir, 'biome');
+	const eslintBin = isWindows
+		? path.join(binDir, 'eslint.cmd')
+		: path.join(binDir, 'eslint');
+
 	switch (linter) {
 		case 'biome':
-			// biome check .  or  biome check --write .
+			// Use local biome directly (not npx) to ensure consistent version
 			if (mode === 'fix') {
 				return isWindows
-					? ['npx', 'biome', 'check', '--write', '.']
-					: ['npx', 'biome', 'check', '--write', '.'];
+					? [biomeBin, 'check', '--write', '.']
+					: [biomeBin, 'check', '--write', '.'];
 			}
-			return isWindows
-				? ['npx', 'biome', 'check', '.']
-				: ['npx', 'biome', 'check', '.'];
+			return isWindows ? [biomeBin, 'check', '.'] : [biomeBin, 'check', '.'];
 		case 'eslint':
 			// eslint .  or  eslint . --fix
 			if (mode === 'fix') {
 				return isWindows
-					? ['npx', 'eslint', '.', '--fix']
-					: ['npx', 'eslint', '.', '--fix'];
+					? [eslintBin, '.', '--fix']
+					: [eslintBin, '.', '--fix'];
 			}
-			return isWindows ? ['npx', 'eslint', '.'] : ['npx', 'eslint', '.'];
+			return isWindows ? [eslintBin, '.'] : [eslintBin, '.'];
 	}
 }
 

@@ -194,6 +194,13 @@ export const GateConfigSchema = z.object({
 
 export type GateConfig = z.infer<typeof GateConfigSchema>;
 
+// Pipeline configuration (parallel execution settings)
+export const PipelineConfigSchema = z.object({
+	parallel_precheck: z.boolean().default(true),
+});
+
+export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
+
 // Summary configuration (reversible summaries for oversized tool outputs)
 export const SummaryConfigSchema = z.object({
 	enabled: z.boolean().default(true),
@@ -610,6 +617,7 @@ export const PluginConfigSchema = z.object({
 
 	// Pipeline settings
 	max_iterations: z.number().min(1).max(10).default(5),
+	pipeline: PipelineConfigSchema.optional(),
 
 	// QA workflow settings
 	qa_retry_limit: z.number().min(1).max(10).default(3),

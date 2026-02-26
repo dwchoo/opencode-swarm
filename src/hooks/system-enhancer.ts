@@ -198,6 +198,27 @@ export function createSystemEnhancerHook(
 							);
 						}
 
+						// v6.10: Parallel pre-check batch hint — architect-only
+						const sessionId_preflight = _input.sessionID;
+						const activeAgent_preflight = swarmState.activeAgent.get(
+							sessionId_preflight ?? '',
+						);
+						const isArchitectForPreflight =
+							!activeAgent_preflight ||
+							stripKnownSwarmPrefix(activeAgent_preflight) === 'architect';
+
+						if (isArchitectForPreflight) {
+							if (config.pipeline?.parallel_precheck !== false) {
+								tryInject(
+									'[SWARM HINT] Parallel pre-check enabled: call pre_check_batch(files, directory) after lint --fix and build_check to run lint:check + secretscan + sast_scan + quality_budget concurrently (max 4 parallel). Check gates_passed before calling @reviewer.',
+								);
+							} else {
+								tryInject(
+									'[SWARM HINT] Parallel pre-check disabled: run lint:check → secretscan → sast_scan → quality_budget sequentially.',
+								);
+							}
+						}
+
 						// v6.2: Retrospective injection — architect-only, most recent retro
 						const sessionId_retro = _input.sessionID;
 						const activeAgent_retro = swarmState.activeAgent.get(
@@ -510,6 +531,30 @@ export function createSystemEnhancerHook(
 							kind: 'phase' as ContextCandidate['kind'],
 							text,
 							tokens: estimateTokens(text),
+							priority: 1,
+							metadata: { contentType: 'prose' as ContentType },
+						});
+					}
+
+					// v6.10: Parallel pre-check batch hint — architect-only
+					const sessionId_preflight_b = _input.sessionID;
+					const activeAgent_preflight_b = swarmState.activeAgent.get(
+						sessionId_preflight_b ?? '',
+					);
+					const isArchitectForPreflight_b =
+						!activeAgent_preflight_b ||
+						stripKnownSwarmPrefix(activeAgent_preflight_b) === 'architect';
+
+					if (isArchitectForPreflight_b) {
+						const hintText_b =
+							config.pipeline?.parallel_precheck !== false
+								? '[SWARM HINT] Parallel pre-check enabled: call pre_check_batch(files, directory) after lint --fix and build_check to run lint:check + secretscan + sast_scan + quality_budget concurrently (max 4 parallel). Check gates_passed before calling @reviewer.'
+								: '[SWARM HINT] Parallel pre-check disabled: run lint:check → secretscan → sast_scan → quality_budget sequentially.';
+						candidates.push({
+							id: `candidate-${idCounter++}`,
+							kind: 'phase' as ContextCandidate['kind'],
+							text: hintText_b,
+							tokens: estimateTokens(hintText_b),
 							priority: 1,
 							metadata: { contentType: 'prose' as ContentType },
 						});

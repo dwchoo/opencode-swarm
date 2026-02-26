@@ -68,6 +68,7 @@ export type {
 	AutomationCapabilities,
 	AutomationConfig,
 	AutomationMode,
+	PipelineConfig,
 	PluginConfig,
 	SwarmConfig,
 } from './schema';
@@ -76,6 +77,7 @@ export {
 	AutomationCapabilitiesSchema,
 	AutomationConfigSchema,
 	AutomationModeSchema,
+	PipelineConfigSchema,
 	PluginConfigSchema,
 	SwarmConfigSchema,
 } from './schema';
