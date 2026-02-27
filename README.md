@@ -473,6 +473,40 @@ npx opencode-swarm install
 opencode  # then: /swarm-diagnose
 ```
 
+### Install from Git (without npm publish)
+
+If your fork is not published on npm, install directly from a Git URL:
+
+```bash
+# Install dwchoo fork from GitHub
+npm install -g "git+https://github.com/dwchoo/opencode-swarm.git#main"
+
+# Register plugin in OpenCode config
+opencode-swarm install
+```
+
+For active local development, use `npm link` from your clone:
+
+```bash
+git clone https://github.com/dwchoo/opencode-swarm.git
+cd opencode-swarm
+bun install
+bun run build
+npm link
+
+# Register plugin in OpenCode config
+opencode-swarm install
+```
+
+When updating your linked local clone:
+
+```bash
+git pull origin main
+bun install
+bun run build
+npm link
+```
+
 The installer auto-configures `opencode.json` to include the plugin. Manual configuration:
 
 ```json
