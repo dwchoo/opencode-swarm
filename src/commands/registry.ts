@@ -63,6 +63,13 @@ export interface SwarmCommandRegistryEntry {
 	handler: SwarmCommandHandlerRef;
 	usage: SwarmCommandUsage;
 	legacyRewriteHint: string;
+	required?: {
+		minPositionalArgs?: number;
+		requiredFlags?: string[];
+		missingArgsMessage?: string;
+		usage: string;
+		example: string;
+	};
 }
 
 export const SWARM_COMMAND_REGISTRY: Record<
@@ -150,11 +157,39 @@ export const SWARM_COMMAND_REGISTRY: Record<
 		handler: handleResetCommand,
 		usage: '/swarm-reset',
 		legacyRewriteHint: 'Use /swarm-reset instead of /swarm reset.',
+		required: {
+			requiredFlags: ['--confirm'],
+			missingArgsMessage: [
+				'## Swarm Reset',
+				'',
+				'⚠️ This will delete plan.md and context.md from .swarm/',
+				'',
+				'**Tip**: Run `/swarm-export` first to backup your state.',
+				'',
+				'To confirm, run: `/swarm-reset --confirm`',
+			].join('\n'),
+			usage: '/swarm-reset --confirm',
+			example: '/swarm-reset --confirm',
+		},
 	},
 	'swarm-retrieve': {
 		handler: handleRetrieveCommand,
 		usage: '/swarm-retrieve',
 		legacyRewriteHint: 'Use /swarm-retrieve instead of /swarm retrieve.',
+		required: {
+			minPositionalArgs: 1,
+			missingArgsMessage: [
+				'## Swarm Retrieve',
+				'',
+				'Usage: `/swarm-retrieve <id>`',
+				'',
+				'Example: `/swarm-retrieve S1`',
+				'',
+				'Retrieves the full output that was replaced by a summary.',
+			].join('\n'),
+			usage: '/swarm-retrieve <id>',
+			example: '/swarm-retrieve S1',
+		},
 	},
 };
 

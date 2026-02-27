@@ -34201,7 +34201,7 @@ function formatDoctorMarkdown(result) {
   if (result.hasAutoFixableIssues) {
     lines.push("---");
     lines.push("");
-    lines.push("Tip: Some issues can be auto-fixed. Run `/swarm config doctor --fix` to apply fixes.");
+    lines.push("Tip: Some issues can be auto-fixed. Run `/swarm-config-doctor --fix` to apply fixes.");
   }
   return lines.join(`
 `);
@@ -34373,7 +34373,7 @@ async function handleEvidenceSummaryCommand(directory) {
   const { buildEvidenceSummary: buildEvidenceSummary2 } = await Promise.resolve().then(() => (init_evidence_summary_service(), exports_evidence_summary_service));
   const artifact = await buildEvidenceSummary2(directory);
   if (!artifact) {
-    return "No plan found. Run `/swarm plan` to check plan status.";
+    return "No plan found. Run `/swarm-plan` to check plan status.";
   }
   const lines = [
     "## Evidence Summary",
@@ -34717,9 +34717,9 @@ async function handleResetCommand(directory, args) {
       "",
       "\u26A0\uFE0F This will delete plan.md and context.md from .swarm/",
       "",
-      "**Tip**: Run `/swarm export` first to backup your state.",
+      "**Tip**: Run `/swarm-export` first to backup your state.",
       "",
-      "To confirm, run: `/swarm reset --confirm`"
+      "To confirm, run: `/swarm-reset --confirm`"
     ].join(`
 `);
   }
@@ -34842,9 +34842,9 @@ async function handleRetrieveCommand(directory, args) {
     return [
       "## Swarm Retrieve",
       "",
-      "Usage: `/swarm retrieve <id>`",
+      "Usage: `/swarm-retrieve <id>`",
       "",
-      "Example: `/swarm retrieve S1`",
+      "Example: `/swarm-retrieve S1`",
       "",
       "Retrieves the full output that was replaced by a summary."
     ].join(`
@@ -35153,91 +35153,391 @@ No active swarm plan found. Nothing to sync.`;
 `);
 }
 
+// src/commands/registry.ts
+var SWARM_COMMAND_ORDER = [
+  "swarm-status",
+  "swarm-plan",
+  "swarm-agents",
+  "swarm-history",
+  "swarm-config",
+  "swarm-config-doctor",
+  "swarm-doctor",
+  "swarm-evidence",
+  "swarm-evidence-summary",
+  "swarm-archive",
+  "swarm-diagnose",
+  "swarm-preflight",
+  "swarm-sync-plan",
+  "swarm-benchmark",
+  "swarm-export",
+  "swarm-reset",
+  "swarm-retrieve"
+];
+var SWARM_COMMAND_REGISTRY = {
+  "swarm-status": {
+    handler: handleStatusCommand,
+    usage: "/swarm-status",
+    legacyRewriteHint: "Use /swarm-status instead of /swarm status."
+  },
+  "swarm-plan": {
+    handler: handlePlanCommand,
+    usage: "/swarm-plan",
+    legacyRewriteHint: "Use /swarm-plan instead of /swarm plan."
+  },
+  "swarm-agents": {
+    handler: handleAgentsCommand,
+    usage: "/swarm-agents",
+    legacyRewriteHint: "Use /swarm-agents instead of /swarm agents."
+  },
+  "swarm-history": {
+    handler: handleHistoryCommand,
+    usage: "/swarm-history",
+    legacyRewriteHint: "Use /swarm-history instead of /swarm history."
+  },
+  "swarm-config": {
+    handler: handleConfigCommand,
+    usage: "/swarm-config",
+    legacyRewriteHint: "Use /swarm-config instead of /swarm config."
+  },
+  "swarm-config-doctor": {
+    handler: handleDoctorCommand,
+    usage: "/swarm-config-doctor",
+    legacyRewriteHint: "Use /swarm-config-doctor instead of /swarm config doctor."
+  },
+  "swarm-doctor": {
+    handler: handleDoctorCommand,
+    usage: "/swarm-doctor",
+    legacyRewriteHint: "Use /swarm-doctor instead of /swarm doctor."
+  },
+  "swarm-evidence": {
+    handler: handleEvidenceCommand,
+    usage: "/swarm-evidence",
+    legacyRewriteHint: "Use /swarm-evidence instead of /swarm evidence."
+  },
+  "swarm-evidence-summary": {
+    handler: handleEvidenceSummaryCommand,
+    usage: "/swarm-evidence-summary",
+    legacyRewriteHint: "Use /swarm-evidence-summary instead of /swarm evidence summary."
+  },
+  "swarm-archive": {
+    handler: handleArchiveCommand,
+    usage: "/swarm-archive",
+    legacyRewriteHint: "Use /swarm-archive instead of /swarm archive."
+  },
+  "swarm-diagnose": {
+    handler: handleDiagnoseCommand,
+    usage: "/swarm-diagnose",
+    legacyRewriteHint: "Use /swarm-diagnose instead of /swarm diagnose."
+  },
+  "swarm-preflight": {
+    handler: handlePreflightCommand,
+    usage: "/swarm-preflight",
+    legacyRewriteHint: "Use /swarm-preflight instead of /swarm preflight."
+  },
+  "swarm-sync-plan": {
+    handler: handleSyncPlanCommand,
+    usage: "/swarm-sync-plan",
+    legacyRewriteHint: "Use /swarm-sync-plan instead of /swarm sync-plan."
+  },
+  "swarm-benchmark": {
+    handler: handleBenchmarkCommand,
+    usage: "/swarm-benchmark",
+    legacyRewriteHint: "Use /swarm-benchmark instead of /swarm benchmark."
+  },
+  "swarm-export": {
+    handler: handleExportCommand,
+    usage: "/swarm-export",
+    legacyRewriteHint: "Use /swarm-export instead of /swarm export."
+  },
+  "swarm-reset": {
+    handler: handleResetCommand,
+    usage: "/swarm-reset",
+    legacyRewriteHint: "Use /swarm-reset instead of /swarm reset.",
+    required: {
+      requiredFlags: ["--confirm"],
+      missingArgsMessage: [
+        "## Swarm Reset",
+        "",
+        "\u26A0\uFE0F This will delete plan.md and context.md from .swarm/",
+        "",
+        "**Tip**: Run `/swarm-export` first to backup your state.",
+        "",
+        "To confirm, run: `/swarm-reset --confirm`"
+      ].join(`
+`),
+      usage: "/swarm-reset --confirm",
+      example: "/swarm-reset --confirm"
+    }
+  },
+  "swarm-retrieve": {
+    handler: handleRetrieveCommand,
+    usage: "/swarm-retrieve",
+    legacyRewriteHint: "Use /swarm-retrieve instead of /swarm retrieve.",
+    required: {
+      minPositionalArgs: 1,
+      missingArgsMessage: [
+        "## Swarm Retrieve",
+        "",
+        "Usage: `/swarm-retrieve <id>`",
+        "",
+        "Example: `/swarm-retrieve S1`",
+        "",
+        "Retrieves the full output that was replaced by a summary."
+      ].join(`
+`),
+      usage: "/swarm-retrieve <id>",
+      example: "/swarm-retrieve S1"
+    }
+  }
+};
+var SWARM_COMMAND_LIST = SWARM_COMMAND_ORDER.map((key) => SWARM_COMMAND_REGISTRY[key]);
+var SWARM_COMMAND_USAGE_MAP = SWARM_COMMAND_ORDER.reduce((acc, key) => {
+  acc[key] = SWARM_COMMAND_REGISTRY[key].usage;
+  return acc;
+}, {});
+var SWARM_COMMAND_HANDLER_MAP = SWARM_COMMAND_ORDER.reduce((acc, key) => {
+  acc[key] = SWARM_COMMAND_REGISTRY[key].handler;
+  return acc;
+}, {});
+var normalizeLegacySwarmPhraseForLookup = (phrase) => phrase.trim().toLowerCase().replace(/^\/+/, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ");
+var LEGACY_SWARM_PHRASE_TO_CANONICAL_MESSAGE_ONLY = {
+  status: "swarm-status",
+  "swarm status": "swarm-status",
+  plan: "swarm-plan",
+  "swarm plan": "swarm-plan",
+  agents: "swarm-agents",
+  "swarm agents": "swarm-agents",
+  history: "swarm-history",
+  "swarm history": "swarm-history",
+  config: "swarm-config",
+  "swarm config": "swarm-config",
+  "config doctor": "swarm-config-doctor",
+  "swarm config doctor": "swarm-config-doctor",
+  doctor: "swarm-doctor",
+  "swarm doctor": "swarm-doctor",
+  evidence: "swarm-evidence",
+  "swarm evidence": "swarm-evidence",
+  "evidence summary": "swarm-evidence-summary",
+  "swarm evidence summary": "swarm-evidence-summary",
+  archive: "swarm-archive",
+  "swarm archive": "swarm-archive",
+  diagnose: "swarm-diagnose",
+  "swarm diagnose": "swarm-diagnose",
+  preflight: "swarm-preflight",
+  "swarm preflight": "swarm-preflight",
+  "sync plan": "swarm-sync-plan",
+  "swarm sync plan": "swarm-sync-plan",
+  benchmark: "swarm-benchmark",
+  "swarm benchmark": "swarm-benchmark",
+  export: "swarm-export",
+  "swarm export": "swarm-export",
+  reset: "swarm-reset",
+  "swarm reset": "swarm-reset",
+  retrieve: "swarm-retrieve",
+  "swarm retrieve": "swarm-retrieve"
+};
+
 // src/commands/index.ts
 var HELP_TEXT = [
   "## Swarm Commands",
   "",
-  "- `/swarm status` \u2014 Show current swarm state",
-  "- `/swarm plan [phase]` \u2014 Show plan (optionally filter by phase number)",
-  "- `/swarm agents` \u2014 List registered agents",
-  "- `/swarm history` \u2014 Show completed phases summary",
-  "- `/swarm config` \u2014 Show current resolved configuration",
-  "- `/swarm config doctor` \u2014 Run config doctor checks",
-  "- `/swarm evidence [taskId]` \u2014 Show evidence bundles",
-  "- `/swarm evidence summary` \u2014 Generate evidence summary with completion ratio and blockers",
-  "- `/swarm archive [--dry-run]` \u2014 Archive old evidence bundles",
-  "- `/swarm diagnose` \u2014 Run health check on swarm state",
-  "- `/swarm preflight` \u2014 Run preflight automation checks",
-  "- `/swarm sync-plan` \u2014 Ensure plan.json and plan.md are synced",
-  "- `/swarm benchmark [--cumulative] [--ci-gate]` \u2014 Show performance metrics",
-  "- `/swarm export` \u2014 Export plan and context as JSON",
-  "- `/swarm reset --confirm` \u2014 Clear swarm state files",
-  "- `/swarm retrieve <id>` \u2014 Retrieve full output from a summary"
+  "Use canonical `/swarm-*` commands:",
+  ...SWARM_COMMAND_ORDER.map((key) => `- \`${SWARM_COMMAND_REGISTRY[key].usage}\``)
 ].join(`
 `);
+var LEGACY_REMOVAL_HEADER = "The `/swarm` command was removed. Use canonical `/swarm-*` commands instead.";
+var LEGACY_NORMALIZED_PHRASE_ENTRIES = Object.entries(LEGACY_SWARM_PHRASE_TO_CANONICAL_MESSAGE_ONLY).map(([legacyPhrase, canonicalCommand]) => ({
+  normalizedPhrase: normalizeLegacySwarmPhraseForLookup(legacyPhrase),
+  canonicalCommand
+})).sort((a, b) => b.normalizedPhrase.length - a.normalizedPhrase.length || a.normalizedPhrase.localeCompare(b.normalizedPhrase));
+function findLegacyCanonicalReplacement(legacyArguments) {
+  const rawArguments = legacyArguments.trim().toLowerCase().replace(/^\/+/, "");
+  if (rawArguments.length === 0) {
+    return;
+  }
+  const rawTokens = rawArguments.split(/\s+/).filter(Boolean);
+  if (rawTokens.length === 0) {
+    return;
+  }
+  const normalizedTokenGroups = rawTokens.map((token) => normalizeLegacySwarmPhraseForLookup(token).split(" ").filter(Boolean));
+  const normalizedTokens = normalizedTokenGroups.flat();
+  if (normalizedTokens.length === 0) {
+    return;
+  }
+  const phraseBoundaryTokenCounts = new Set;
+  let cumulativeTokenCount = 0;
+  for (const tokenGroup of normalizedTokenGroups) {
+    cumulativeTokenCount += tokenGroup.length;
+    phraseBoundaryTokenCounts.add(cumulativeTokenCount);
+  }
+  for (const legacyPhraseEntry of LEGACY_NORMALIZED_PHRASE_ENTRIES) {
+    const legacyPhraseTokens = legacyPhraseEntry.normalizedPhrase.split(" ");
+    if (normalizedTokens.length < legacyPhraseTokens.length) {
+      continue;
+    }
+    if (!phraseBoundaryTokenCounts.has(legacyPhraseTokens.length)) {
+      continue;
+    }
+    const phraseMatches = legacyPhraseTokens.every((token, index) => normalizedTokens[index] === token);
+    if (phraseMatches) {
+      return legacyPhraseEntry.canonicalCommand;
+    }
+  }
+  return;
+}
+function getLegacyRemovalGuidance(legacyArguments) {
+  const replacementCommand = findLegacyCanonicalReplacement(legacyArguments);
+  if (!replacementCommand) {
+    return [
+      LEGACY_REMOVAL_HEADER,
+      "",
+      "Run one of these commands:",
+      ...SWARM_COMMAND_ORDER.map((key) => `- \`${SWARM_COMMAND_REGISTRY[key].usage}\``)
+    ].join(`
+`);
+  }
+  return [
+    LEGACY_REMOVAL_HEADER,
+    "",
+    `Use \`${SWARM_COMMAND_REGISTRY[replacementCommand].usage}\` for this request.`
+  ].join(`
+`);
+}
+function formatMissingRequiredArgumentsMessage(required3) {
+  if (required3.missingArgsMessage) {
+    return required3.missingArgsMessage;
+  }
+  return `Missing required argument(s).
+Usage: \`${required3.usage}\`
+Example: \`${required3.example}\``;
+}
+function hasRequiredFlags(tokens, requiredFlags) {
+  const pendingFlags = new Set(requiredFlags);
+  let endOfFlags = false;
+  for (const token of tokens) {
+    if (token === "--") {
+      endOfFlags = true;
+      continue;
+    }
+    if (endOfFlags) {
+      continue;
+    }
+    for (const flag of pendingFlags) {
+      if (token === flag || token.startsWith(`${flag}=`)) {
+        pendingFlags.delete(flag);
+        break;
+      }
+    }
+    if (pendingFlags.size === 0) {
+      return true;
+    }
+  }
+  return pendingFlags.size === 0;
+}
+function countPositionalArgs(tokens) {
+  let endOfFlags = false;
+  let positionalArgs = 0;
+  for (const token of tokens) {
+    if (!endOfFlags && token === "--") {
+      endOfFlags = true;
+      continue;
+    }
+    if (endOfFlags || !token.startsWith("-") || token === "-") {
+      positionalArgs += 1;
+    }
+  }
+  return positionalArgs;
+}
+function hasRequiredArguments(tokens, required3) {
+  if (required3.requiredFlags && required3.requiredFlags.length > 0 && !hasRequiredFlags(tokens, [...required3.requiredFlags])) {
+    return false;
+  }
+  if (typeof required3.minPositionalArgs === "number" && countPositionalArgs(tokens) < required3.minPositionalArgs) {
+    return false;
+  }
+  return true;
+}
 function createSwarmCommandHandler(directory, agents) {
   return async (input, output) => {
-    if (input.command !== "swarm") {
+    const rawCommand = input.command.trim();
+    if (/^\/*swarm$/.test(rawCommand)) {
+      output.parts = [
+        {
+          type: "text",
+          text: getLegacyRemovalGuidance(input.arguments)
+        }
+      ];
       return;
     }
+    const normalizedCommand = rawCommand.replace(/^\/+/, "");
+    if (!(normalizedCommand in SWARM_COMMAND_REGISTRY)) {
+      return;
+    }
+    const canonicalCommand = normalizedCommand;
+    const registryEntry = SWARM_COMMAND_REGISTRY[canonicalCommand];
     const tokens = input.arguments.trim().split(/\s+/).filter(Boolean);
-    const [subcommand, ...args] = tokens;
+    const args = tokens;
+    if (registryEntry.required && !hasRequiredArguments(tokens, registryEntry.required)) {
+      output.parts = [
+        {
+          type: "text",
+          text: formatMissingRequiredArgumentsMessage(registryEntry.required)
+        }
+      ];
+      return;
+    }
     let text;
-    switch (subcommand) {
-      case "status":
+    switch (canonicalCommand) {
+      case "swarm-status":
         text = await handleStatusCommand(directory, agents);
         break;
-      case "plan":
+      case "swarm-plan":
         text = await handlePlanCommand(directory, args);
         break;
-      case "agents": {
+      case "swarm-agents": {
         const pluginConfig = loadPluginConfig(directory);
         const guardrailsConfig = pluginConfig?.guardrails ? GuardrailsConfigSchema.parse(pluginConfig.guardrails) : undefined;
         text = handleAgentsCommand(agents, guardrailsConfig);
         break;
       }
-      case "archive":
+      case "swarm-archive":
         text = await handleArchiveCommand(directory, args);
         break;
-      case "history":
+      case "swarm-history":
         text = await handleHistoryCommand(directory, args);
         break;
-      case "config":
-        if (args[0] === "doctor") {
-          text = await handleDoctorCommand(directory, args.slice(1));
-        } else {
-          text = await handleConfigCommand(directory, args);
-        }
+      case "swarm-config":
+        text = await handleConfigCommand(directory, args);
         break;
-      case "doctor":
+      case "swarm-config-doctor":
+      case "swarm-doctor":
         text = await handleDoctorCommand(directory, args);
         break;
-      case "evidence":
-        if (args[0] === "summary") {
-          text = await handleEvidenceSummaryCommand(directory);
-        } else {
-          text = await handleEvidenceCommand(directory, args);
-        }
+      case "swarm-evidence":
+        text = await handleEvidenceCommand(directory, args);
         break;
-      case "diagnose":
+      case "swarm-evidence-summary":
+        text = await handleEvidenceSummaryCommand(directory);
+        break;
+      case "swarm-diagnose":
         text = await handleDiagnoseCommand(directory, args);
         break;
-      case "preflight":
+      case "swarm-preflight":
         text = await handlePreflightCommand(directory, args);
         break;
-      case "sync-plan":
+      case "swarm-sync-plan":
         text = await handleSyncPlanCommand(directory, args);
         break;
-      case "benchmark":
+      case "swarm-benchmark":
         text = await handleBenchmarkCommand(directory, args);
         break;
-      case "export":
+      case "swarm-export":
         text = await handleExportCommand(directory, args);
         break;
-      case "reset":
+      case "swarm-reset":
         text = await handleResetCommand(directory, args);
         break;
-      case "retrieve":
+      case "swarm-retrieve":
         text = await handleRetrieveCommand(directory, args);
         break;
       default:
@@ -36280,7 +36580,7 @@ function createSystemEnhancerHook(config3, directory) {
               }
             }
           }
-          tryInject("[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm retrieve <id> to get the full content if needed.");
+          tryInject("[SWARM HINT] Large tool outputs may be auto-summarized. Use /swarm-retrieve <id> to get the full content if needed.");
           if (config3.review_passes?.always_security_review) {
             tryInject("[SWARM CONFIG] Security review pass is MANDATORY for ALL tasks. Skip file-pattern check \u2014 always run security-only reviewer pass after general review APPROVED.");
           }
@@ -36735,7 +37035,7 @@ function createSummary(output, toolName, summaryId, maxSummaryChars) {
   const byteSize = Buffer.byteLength(output, "utf8");
   const formattedSize = formatBytes(byteSize);
   const headerLine = `[SUMMARY ${summaryId}] ${formattedSize} | ${contentType} | ${lineCount} lines`;
-  const footerLine = `\u2192 Use /swarm retrieve ${summaryId} for full content`;
+  const footerLine = `\u2192 Use /swarm-retrieve ${summaryId} for full content`;
   const overhead = headerLine.length + 1 + footerLine.length + 1;
   const maxPreviewChars = maxSummaryChars - overhead;
   let preview;
@@ -37721,14 +38021,21 @@ import * as fs13 from "fs";
 import * as path18 from "path";
 var MAX_FILE_SIZE_BYTES3 = 1024 * 1024;
 var MAX_EVIDENCE_FILES = 1000;
+var MAX_TOTAL_EVIDENCE_BYTES = 8 * 1024 * 1024;
+var MAX_REQUIRED_TYPES_RAW_LENGTH = 512;
+var MAX_REQUIRED_TYPES_TOKENS = 32;
+var MAX_REQUIRED_TYPE_TOKEN_LENGTH = 64;
 var EVIDENCE_DIR = ".swarm/evidence";
 var PLAN_FILE = ".swarm/plan.md";
 var SHELL_METACHAR_REGEX2 = /[;&|%$`\\]/;
-var VALID_EVIDENCE_FILENAME_REGEX = /^[a-zA-Z0-9_-]+\.json$/;
+var EVIDENCE_FILENAME_REGEX = /^(\d+)_(\d+)-([a-z0-9][a-z0-9_-]*)\.json$/;
 function containsControlChars4(str) {
   return /[\0\t\r\n]/.test(str);
 }
 function validateRequiredTypes(input) {
+  if (input.length > MAX_REQUIRED_TYPES_RAW_LENGTH) {
+    return `required_types exceeds max length (${MAX_REQUIRED_TYPES_RAW_LENGTH})`;
+  }
   if (containsControlChars4(input)) {
     return "required_types contains control characters";
   }
@@ -37740,17 +38047,62 @@ function validateRequiredTypes(input) {
   }
   return null;
 }
+function parseRequiredTypes(input) {
+  const tokens = input.split(",");
+  if (tokens.length > MAX_REQUIRED_TYPES_TOKENS) {
+    return {
+      error: `required_types exceeds max token count (${MAX_REQUIRED_TYPES_TOKENS})`
+    };
+  }
+  const parsed = [];
+  const seen = new Set;
+  for (const token of tokens) {
+    const trimmed = token.trim();
+    if (trimmed.length === 0) {
+      return { error: "required_types contains empty token" };
+    }
+    if (trimmed.length > MAX_REQUIRED_TYPE_TOKEN_LENGTH) {
+      return {
+        error: `required_types token exceeds max length (${MAX_REQUIRED_TYPE_TOKEN_LENGTH})`
+      };
+    }
+    const canonical = trimmed.toLowerCase();
+    if (seen.has(canonical)) {
+      return { error: `required_types contains duplicate token: ${trimmed}` };
+    }
+    seen.add(canonical);
+    parsed.push(trimmed);
+  }
+  return { types: parsed };
+}
+function parseEvidenceFilename(filename) {
+  const match = EVIDENCE_FILENAME_REGEX.exec(filename);
+  if (match === null) {
+    return null;
+  }
+  return {
+    taskId: `${match[1]}.${match[2]}`,
+    type: match[3]
+  };
+}
+function isPathWithinBase(targetPath, basePath) {
+  const normalizedBase = path18.resolve(basePath);
+  const normalizedTarget = path18.resolve(targetPath);
+  return normalizedTarget === normalizedBase || normalizedTarget.startsWith(`${normalizedBase}${path18.sep}`);
+}
 function isPathWithinSwarm(filePath, cwd) {
   const normalizedCwd = path18.resolve(cwd);
   const swarmPath = path18.join(normalizedCwd, ".swarm");
-  const normalizedPath = path18.resolve(filePath);
-  return normalizedPath.startsWith(swarmPath);
+  return isPathWithinBase(filePath, swarmPath);
 }
 function parseCompletedTasks(planContent) {
   const tasks = [];
-  const regex = /^-\s+\[x\]\s+(\d+\.\d+):\s+(.+)/gm;
-  let match;
-  while ((match = regex.exec(planContent)) !== null) {
+  const regex = /^-\s+\[[xX]\]\s+(\d+\.\d+):\s+(.+)/gm;
+  while (true) {
+    const match = regex.exec(planContent);
+    if (match === null) {
+      break;
+    }
     const taskId = match[1];
     let taskName = match[2].trim();
     taskName = taskName.replace(/\s*\[(SMALL|MEDIUM|LARGE)\]\s*$/i, "").trim();
@@ -37758,9 +38110,96 @@ function parseCompletedTasks(planContent) {
   }
   return tasks;
 }
-function readEvidenceFiles(evidenceDir, cwd) {
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function isNonNegativeInteger(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+function isReviewEvidenceRecord(parsed) {
+  return isNonEmptyString(parsed.task_id) && parsed.type === "review" && isNonEmptyString(parsed.timestamp) && isNonEmptyString(parsed.agent) && isNonEmptyString(parsed.verdict) && isNonEmptyString(parsed.summary) && isNonEmptyString(parsed.risk) && Array.isArray(parsed.issues);
+}
+function isTestEvidenceRecord(parsed) {
+  return isNonEmptyString(parsed.task_id) && parsed.type === "test" && isNonEmptyString(parsed.timestamp) && isNonEmptyString(parsed.agent) && isNonEmptyString(parsed.verdict) && isNonEmptyString(parsed.summary) && isNonNegativeInteger(parsed.tests_passed) && isNonNegativeInteger(parsed.tests_failed);
+}
+function isBaseEvidenceRecord(parsed) {
+  return isNonEmptyString(parsed.task_id) && isNonEmptyString(parsed.type);
+}
+function hasValidOptionalCommonFields(parsed) {
+  if (parsed.timestamp !== undefined && !isNonEmptyString(parsed.timestamp)) {
+    return false;
+  }
+  if (parsed.agent !== undefined && !isNonEmptyString(parsed.agent)) {
+    return false;
+  }
+  if (parsed.verdict !== undefined && !isNonEmptyString(parsed.verdict)) {
+    return false;
+  }
+  if (parsed.summary !== undefined && !isNonEmptyString(parsed.summary)) {
+    return false;
+  }
+  return true;
+}
+function hasValidOptionalTestCounts(parsed) {
+  const hasPassed = parsed.tests_passed !== undefined;
+  const hasFailed = parsed.tests_failed !== undefined;
+  if (!hasPassed && !hasFailed) {
+    return true;
+  }
+  if (!hasPassed || !hasFailed) {
+    return false;
+  }
+  return isNonNegativeInteger(parsed.tests_passed) && isNonNegativeInteger(parsed.tests_failed);
+}
+function parseEvidenceRecord(parsed) {
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+  const parsedObject = parsed;
+  if (!isBaseEvidenceRecord(parsedObject)) {
+    return null;
+  }
+  if (!hasValidOptionalCommonFields(parsedObject)) {
+    return null;
+  }
+  if (isReviewEvidenceRecord(parsedObject)) {
+    return {
+      taskId: parsedObject.task_id,
+      type: parsedObject.type
+    };
+  }
+  if (isTestEvidenceRecord(parsedObject)) {
+    return {
+      taskId: parsedObject.task_id,
+      type: parsedObject.type
+    };
+  }
+  if (parsedObject.type === "review" || parsedObject.type === "test") {
+    if (parsedObject.type === "test" && !hasValidOptionalTestCounts(parsedObject)) {
+      return null;
+    }
+    return {
+      taskId: parsedObject.task_id,
+      type: parsedObject.type
+    };
+  }
+  return {
+    taskId: parsedObject.task_id,
+    type: parsedObject.type
+  };
+}
+function readEvidenceFiles(evidenceDir) {
   const evidence = [];
-  if (!fs13.existsSync(evidenceDir) || !fs13.statSync(evidenceDir).isDirectory()) {
+  if (!fs13.existsSync(evidenceDir)) {
+    return evidence;
+  }
+  let evidenceDirStat;
+  try {
+    evidenceDirStat = fs13.statSync(evidenceDir);
+  } catch {
+    return evidence;
+  }
+  if (!evidenceDirStat.isDirectory()) {
     return evidence;
   }
   let files;
@@ -37769,51 +38208,65 @@ function readEvidenceFiles(evidenceDir, cwd) {
   } catch {
     return evidence;
   }
+  files.sort((a, b) => a.localeCompare(b));
   const filesToProcess = files.slice(0, MAX_EVIDENCE_FILES);
+  let totalBytesRead = 0;
   for (const filename of filesToProcess) {
-    if (!VALID_EVIDENCE_FILENAME_REGEX.test(filename)) {
+    const expectedFromFilename = parseEvidenceFilename(filename);
+    if (!expectedFromFilename) {
       continue;
     }
     const filePath = path18.join(evidenceDir, filename);
+    const evidenceDirResolved = path18.resolve(evidenceDir);
+    if (!isPathWithinBase(filePath, evidenceDirResolved)) {
+      continue;
+    }
+    let fd = null;
     try {
-      const resolvedPath = path18.resolve(filePath);
-      const evidenceDirResolved = path18.resolve(evidenceDir);
-      if (!resolvedPath.startsWith(evidenceDirResolved)) {
-        continue;
-      }
-      const stat = fs13.lstatSync(filePath);
+      const noFollowFlag = typeof fs13.constants.O_NOFOLLOW === "number" ? fs13.constants.O_NOFOLLOW : 0;
+      fd = fs13.openSync(filePath, fs13.constants.O_RDONLY | noFollowFlag);
+      const stat = fs13.fstatSync(fd);
       if (!stat.isFile()) {
         continue;
       }
-    } catch {
-      continue;
-    }
-    let fileStat;
-    try {
-      fileStat = fs13.statSync(filePath);
-      if (fileStat.size > MAX_FILE_SIZE_BYTES3) {
+      if (stat.size > MAX_FILE_SIZE_BYTES3) {
         continue;
       }
-    } catch {
-      continue;
-    }
-    let content;
-    try {
-      content = fs13.readFileSync(filePath, "utf-8");
-    } catch {
-      continue;
-    }
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      continue;
-    }
-    if (parsed && typeof parsed === "object" && typeof parsed.task_id === "string" && typeof parsed.type === "string") {
+      if (totalBytesRead + stat.size > MAX_TOTAL_EVIDENCE_BYTES) {
+        continue;
+      }
+      const pathStat = fs13.lstatSync(filePath);
+      if (pathStat.isSymbolicLink()) {
+        continue;
+      }
+      if (pathStat.dev !== stat.dev || pathStat.ino !== stat.ino) {
+        continue;
+      }
+      const content = fs13.readFileSync(fd, "utf-8");
+      totalBytesRead += stat.size;
+      let parsed;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        continue;
+      }
+      const parsedEvidence = parseEvidenceRecord(parsed);
+      if (!parsedEvidence) {
+        continue;
+      }
+      if (parsedEvidence.taskId !== expectedFromFilename.taskId || parsedEvidence.type !== expectedFromFilename.type) {
+        continue;
+      }
       evidence.push({
-        taskId: parsed.task_id,
-        type: parsed.type
+        taskId: parsedEvidence.taskId,
+        type: parsedEvidence.type
       });
+    } catch {} finally {
+      if (fd !== null) {
+        try {
+          fs13.closeSync(fd);
+        } catch {}
+      }
     }
   }
   return evidence;
@@ -37830,8 +38283,6 @@ function analyzeGaps(completedTasks, evidence, requiredTypes) {
   }
   for (const task of completedTasks) {
     const taskEvidence = evidenceByTask.get(task.taskId) || new Set;
-    const requiredSet = new Set(requiredTypes.map((t) => t.toLowerCase()));
-    const presentSet = new Set([...taskEvidence].filter((t) => requiredSet.has(t.toLowerCase())));
     const missing = [];
     const present = [];
     for (const reqType of requiredTypes) {
@@ -37870,7 +38321,8 @@ var evidence_check = tool({
       }
     } catch {}
     const cwd = process.cwd();
-    const requiredTypesValue = requiredTypesInput || "review,test";
+    const defaultRequiredTypesValue = "review,test";
+    const requiredTypesValue = requiredTypesInput ?? defaultRequiredTypesValue;
     const validationError = validateRequiredTypes(requiredTypesValue);
     if (validationError) {
       const errorResult = {
@@ -37883,7 +38335,19 @@ var evidence_check = tool({
       };
       return JSON.stringify(errorResult, null, 2);
     }
-    const requiredTypes = requiredTypesValue.split(",").map((t) => t.trim()).filter((t) => t.length > 0);
+    const parsedRequiredTypes = parseRequiredTypes(requiredTypesValue);
+    if ("error" in parsedRequiredTypes) {
+      const errorResult = {
+        error: `invalid required_types: ${parsedRequiredTypes.error}`,
+        completedTasks: [],
+        tasksWithFullEvidence: [],
+        completeness: 0,
+        requiredTypes: [],
+        gaps: []
+      };
+      return JSON.stringify(errorResult, null, 2);
+    }
+    const requiredTypes = parsedRequiredTypes.types;
     const planPath = path18.join(cwd, PLAN_FILE);
     if (!isPathWithinSwarm(planPath, cwd)) {
       const errorResult = {
@@ -37917,7 +38381,18 @@ var evidence_check = tool({
       return JSON.stringify(result2, null, 2);
     }
     const evidenceDir = path18.join(cwd, EVIDENCE_DIR);
-    const evidence = readEvidenceFiles(evidenceDir, cwd);
+    if (!isPathWithinSwarm(evidenceDir, cwd)) {
+      const errorResult = {
+        error: "evidence directory path validation failed",
+        completedTasks: [],
+        tasksWithFullEvidence: [],
+        completeness: 0,
+        requiredTypes: [],
+        gaps: []
+      };
+      return JSON.stringify(errorResult, null, 2);
+    }
+    const evidence = readEvidenceFiles(evidenceDir);
     const { tasksWithFullEvidence, gaps } = analyzeGaps(completedTasks, evidence, requiredTypes);
     const completeness = completedTasks.length > 0 ? Math.round(tasksWithFullEvidence.length / completedTasks.length * 100) / 100 : 1;
     const result = {
@@ -40075,16 +40550,26 @@ var OpenCodeSwarm = async (ctx) => {
       } else {
         Object.assign(opencodeConfig.agent, agents);
       }
+      const canonicalSwarmCommands = SWARM_COMMAND_ORDER.reduce((acc, key) => {
+        const usage = SWARM_COMMAND_REGISTRY[key].usage;
+        const commandKey = usage.replace(/^\//, "");
+        acc[commandKey] = {
+          template: `${commandKey} $ARGUMENTS`,
+          description: `Swarm command (${usage})`
+        };
+        return acc;
+      }, {});
+      const mergedCommands = {
+        ...opencodeConfig.command || {}
+      };
+      delete mergedCommands.swarm;
       opencodeConfig.command = {
-        ...opencodeConfig.command || {},
-        swarm: {
-          template: "$ARGUMENTS",
-          description: "Swarm management commands"
-        }
+        ...mergedCommands,
+        ...canonicalSwarmCommands
       };
       log("Config applied", {
         agents: Object.keys(agents),
-        commands: ["swarm"]
+        commands: SWARM_COMMAND_ORDER
       });
     },
     "experimental.chat.messages.transform": composeHandlers(...[

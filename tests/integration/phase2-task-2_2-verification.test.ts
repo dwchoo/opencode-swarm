@@ -12,6 +12,8 @@ const REVIEW_FILES = [
 	'1_5-review.json',
 ];
 
+const PHASE1_TASK_IDS = ['1.1', '1.2', '1.3', '1.4', '1.5'];
+
 const EVIDENCE_DIR = join(process.cwd(), '.swarm', 'evidence');
 
 async function runEvidenceCheck(required_types: string) {
@@ -22,6 +24,11 @@ async function runEvidenceCheck(required_types: string) {
 		tasksWithFullEvidence?: string[];
 		gaps?: Array<{ taskId: string; missing: string[]; present: string[] }>;
 	};
+}
+
+function expectRequiredTypes(actual: string[] | undefined, expected: string[]) {
+	expect(actual).toBeDefined();
+	expect([...(actual ?? [])].sort()).toEqual([...expected].sort());
 }
 
 describe('Phase 2.2 review evidence verification', () => {
@@ -43,26 +50,28 @@ describe('Phase 2.2 review evidence verification', () => {
 	test('evidence_check recognizes phase 1 review backfill with required_types=review', async () => {
 		const parsed = await runEvidenceCheck('review');
 
-		expect(parsed.requiredTypes).toEqual(['review']);
+		expectRequiredTypes(parsed.requiredTypes, ['review']);
 		expect(parsed.completeness).toBeTypeOf('number');
 		expect(parsed.tasksWithFullEvidence).toBeDefined();
 
-		for (const taskId of ['1.1', '1.2', '1.3', '1.4', '1.5']) {
+		for (const taskId of PHASE1_TASK_IDS) {
 			expect(parsed.tasksWithFullEvidence).toContain(taskId);
 		}
 	});
 
-	test('evidence_check reports expected missing test evidence with required_types=review,test', async () => {
+	test('evidence_check reports full phase 1 evidence with required_types=review,test', async () => {
 		const parsed = await runEvidenceCheck('review,test');
 
-		expect(parsed.requiredTypes).toEqual(['review', 'test']);
+		expectRequiredTypes(parsed.requiredTypes, ['review', 'test']);
+		expect(parsed.completeness).toBeTypeOf('number');
+		expect(parsed.tasksWithFullEvidence).toBeDefined();
 		expect(parsed.gaps).toBeDefined();
 
-		for (const taskId of ['1.1', '1.2', '1.3', '1.4', '1.5']) {
+		for (const taskId of PHASE1_TASK_IDS) {
+			expect(parsed.tasksWithFullEvidence).toContain(taskId);
+
 			const gap = parsed.gaps?.find((item) => item.taskId === taskId);
-			expect(gap).toBeDefined();
-			expect(gap?.present).toContain('review');
-			expect(gap?.missing).toContain('test');
+			expect(gap).toBeUndefined();
 		}
 	});
 });

@@ -138,6 +138,90 @@ function getLegacyRemovalGuidance(legacyArguments: string): string {
 	].join('\n');
 }
 
+function formatMissingRequiredArgumentsMessage(required: {
+	usage: string;
+	example: string;
+	missingArgsMessage?: string;
+}): string {
+	if (required.missingArgsMessage) {
+		return required.missingArgsMessage;
+	}
+
+	return `Missing required argument(s).\nUsage: \`${required.usage}\`\nExample: \`${required.example}\``;
+}
+
+function hasRequiredFlags(tokens: string[], requiredFlags: string[]): boolean {
+	const pendingFlags = new Set(requiredFlags);
+	let endOfFlags = false;
+
+	for (const token of tokens) {
+		if (token === '--') {
+			endOfFlags = true;
+			continue;
+		}
+
+		if (endOfFlags) {
+			continue;
+		}
+
+		for (const flag of pendingFlags) {
+			if (token === flag || token.startsWith(`${flag}=`)) {
+				pendingFlags.delete(flag);
+				break;
+			}
+		}
+
+		if (pendingFlags.size === 0) {
+			return true;
+		}
+	}
+
+	return pendingFlags.size === 0;
+}
+
+function countPositionalArgs(tokens: string[]): number {
+	let endOfFlags = false;
+	let positionalArgs = 0;
+
+	for (const token of tokens) {
+		if (!endOfFlags && token === '--') {
+			endOfFlags = true;
+			continue;
+		}
+
+		if (endOfFlags || !token.startsWith('-') || token === '-') {
+			positionalArgs += 1;
+		}
+	}
+
+	return positionalArgs;
+}
+
+function hasRequiredArguments(
+	tokens: string[],
+	required: {
+		minPositionalArgs?: number;
+		requiredFlags?: string[];
+	},
+): boolean {
+	if (
+		required.requiredFlags &&
+		required.requiredFlags.length > 0 &&
+		!hasRequiredFlags(tokens, [...required.requiredFlags])
+	) {
+		return false;
+	}
+
+	if (
+		typeof required.minPositionalArgs === 'number' &&
+		countPositionalArgs(tokens) < required.minPositionalArgs
+	) {
+		return false;
+	}
+
+	return true;
+}
+
 /**
  * Creates a command.execute.before handler for /swarm commands.
  * Uses factory pattern to close over directory and agents.
@@ -150,7 +234,9 @@ export function createSwarmCommandHandler(
 	output: { parts: unknown[] },
 ) => Promise<void> {
 	return async (input, output) => {
-		if (input.command === 'swarm') {
+		const rawCommand = input.command.trim();
+
+		if (/^\/*swarm$/.test(rawCommand)) {
 			output.parts = [
 				{
 					type: 'text',
@@ -160,15 +246,31 @@ export function createSwarmCommandHandler(
 			return;
 		}
 
-		if (!(input.command in SWARM_COMMAND_REGISTRY)) {
+		const normalizedCommand = rawCommand.replace(/^\/+/, '');
+
+		if (!(normalizedCommand in SWARM_COMMAND_REGISTRY)) {
 			return;
 		}
 
-		const canonicalCommand = input.command as SwarmCommandKey;
+		const canonicalCommand = normalizedCommand as SwarmCommandKey;
+		const registryEntry = SWARM_COMMAND_REGISTRY[canonicalCommand];
 
 		// Parse arguments
 		const tokens = input.arguments.trim().split(/\s+/).filter(Boolean);
 		const args = tokens;
+
+		if (
+			registryEntry.required &&
+			!hasRequiredArguments(tokens, registryEntry.required)
+		) {
+			output.parts = [
+				{
+					type: 'text',
+					text: formatMissingRequiredArgumentsMessage(registryEntry.required),
+				} as unknown as (typeof output.parts)[number],
+			];
+			return;
+		}
 
 		let text: string;
 

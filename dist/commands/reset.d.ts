@@ -1,5 +1,5 @@
 /**
- * Handles the /swarm reset command.
+ * Handles the /swarm-reset command.
  * Clears plan.md and context.md from .swarm/ directory.
  * Requires --confirm flag as a safety gate.
  */

@@ -327,7 +327,7 @@ const OpenCodeSwarm: Plugin = async (ctx) => {
 				const usage = SWARM_COMMAND_REGISTRY[key].usage;
 				const commandKey = usage.replace(/^\//, '');
 				acc[commandKey] = {
-					template: '$ARGUMENTS',
+					template: `${commandKey} $ARGUMENTS`,
 					description: `Swarm command (${usage})`,
 				};
 				return acc;

@@ -77,6 +77,15 @@ describe('commands registry task 1.2 verification', () => {
 		expect(normalizeLegacySwarmPhraseForLookup('')).toBe('');
 	});
 
+	test('normalization collapses mixed whitespace and separator runs', () => {
+		expect(
+			normalizeLegacySwarmPhraseForLookup('\n\t  ///SWARM___CONFIG----DOCTOR\t\n'),
+		).toBe('swarm config doctor');
+		expect(normalizeLegacySwarmPhraseForLookup('   swarm---retrieve   S1   ')).toBe(
+			'swarm retrieve s1',
+		);
+	});
+
 	test('legacy phrase map resolves normalized aliases to canonical commands', () => {
 		const aliases = [
 			' /swarm status ',
