@@ -372,6 +372,14 @@ Per-agent profiles allow fine-grained overrides:
 
 ## Configuration
 
+### Config Files
+
+- OpenCode host config (plugin registration): `~/.config/opencode/config.json`
+- Swarm global config: `~/.config/opencode/opencode-swarm.json`
+- Swarm project override: `.opencode/opencode-swarm.json`
+
+Project config is deep-merged over global config.
+
 ```json
 {
   "agents": {
@@ -399,12 +407,12 @@ Per-agent profiles allow fine-grained overrides:
   "automation": {
     "mode": "manual",
     "capabilities": {
-      "plan_sync": false,
+      "plan_sync": true,
       "phase_preflight": false,
       "config_doctor_on_startup": false,
       "config_doctor_autofix": false,
-      "evidence_auto_summaries": false,
-      "decision_drift_detection": false
+      "evidence_auto_summaries": true,
+      "decision_drift_detection": true
     }
   }
 }
@@ -412,11 +420,11 @@ Per-agent profiles allow fine-grained overrides:
 
 `variant` accepts any non-empty string; recommended values are `low`, `medium`, or `high` (exact values are provider/model specific).
 
-`reasoningEffort` is kept as a backwards-compatible alias and maps to `variant`.
+`reasoningEffort` is supported as a compatibility alias and maps to `variant`. If both are set, `variant` takes precedence.
 
 When `swarms` is configured (non-empty), top-level legacy `agents` overrides are ignored. Example: if `agents.coder.variant` is `high` but `swarms.local.agents.coder.variant` is unset, `local_coder` does not inherit `high`.
 
-Save to `~/.config/opencode/opencode-swarm.json` or `.opencode/swarm.json` in your project root. Project config merges over global config via deep merge — partial overrides do not clobber unspecified fields.
+Save to `~/.config/opencode/opencode-swarm.json` or `.opencode/opencode-swarm.json` in your project root. Project config merges over global config via deep merge — partial overrides do not clobber unspecified fields.
 
 ### Automation (v6.7)
 
@@ -440,80 +448,66 @@ Save to `~/.config/opencode/opencode-swarm.json` or `.opencode/swarm.json` in yo
 - `hybrid` - Background automation for safe ops, manual for sensitive ones
 - `auto` - Full background automation (target state)
 
-**Per-feature flags (all default `false`):**
-- `plan_sync` - Auto-regenerate plan.md from plan.json when out of sync
-- `phase_preflight` - Phase-boundary validation before agent execution
-- `config_doctor_on_startup` - Config validation on plugin initialization
-- `config_doctor_autofix` - Auto-fix mode for Config Doctor (requires explicit opt-in)
-- `evidence_auto_summaries` - Auto-generate evidence summaries
-- `decision_drift_detection` - Detect drift between planned and actual decisions
+**Per-feature flags (defaults):**
+- `plan_sync` - Auto-regenerate plan.md from plan.json when out of sync (default: `true`)
+- `phase_preflight` - Phase-boundary validation before agent execution (default: `false`)
+- `config_doctor_on_startup` - Config validation on plugin initialization (default: `false`)
+- `config_doctor_autofix` - Auto-fix mode for Config Doctor (requires explicit opt-in, default: `false`)
+- `evidence_auto_summaries` - Auto-generate evidence summaries (default: `true`)
+- `decision_drift_detection` - Detect drift between planned and actual decisions (default: `true`)
 
 ### Disabling Agents
 
 ```json
 {
-  "sme":          { "disabled": true },
-  "designer":     { "disabled": true },
-  "test_engineer": { "disabled": true }
+  "agents": {
+    "sme": { "disabled": true },
+    "designer": { "disabled": true },
+    "test_engineer": { "disabled": true }
+  }
 }
 ```
+
+If you use multi-swarm config, disable per swarm under `swarms.<swarmId>.agents`.
 
 ---
 
 ## Installation
 
-```bash
-# Install globally
-npm install -g opencode-swarm
+### Option 1: Install dwchoo fork from GitHub (recommended)
 
-# Or use npx
-npx opencode-swarm install
+```bash
+# Install or update latest main from the fork
+npm install -g "github:dwchoo/opencode-swarm#main"
+
+# Register plugin in OpenCode config
+opencode-swarm install
 
 # Verify
 opencode  # then: /swarm-diagnose
 ```
 
-### Install from Git (without npm publish)
-
-If your fork is not published on npm, install directly from a Git URL:
+### Option 2: Run installer with npx (always fetch latest fork)
 
 ```bash
-# Install dwchoo fork from GitHub
-npm install -g "git+https://github.com/dwchoo/opencode-swarm.git#main"
+npx -y github:dwchoo/opencode-swarm#main install
 
-# Register plugin in OpenCode config
-opencode-swarm install
+# Verify
+opencode  # then: /swarm-diagnose
 ```
 
-For active local development, use `npm link` from your clone:
+For day-to-day use, Option 1 is recommended.
+Use Option 2 when you want to run the latest installer without changing global install state.
 
-```bash
-git clone https://github.com/dwchoo/opencode-swarm.git
-cd opencode-swarm
-bun install
-bun run build
-npm link
-
-# Register plugin in OpenCode config
-opencode-swarm install
-```
-
-When updating your linked local clone:
-
-```bash
-git pull origin main
-bun install
-bun run build
-npm link
-```
-
-The installer auto-configures `opencode.json` to include the plugin. Manual configuration:
+The installer updates `~/.config/opencode/config.json` and registers this plugin in `plugin` (singular). Manual host config example:
 
 ```json
 {
-  "plugins": ["opencode-swarm"]
+  "plugin": ["opencode-swarm"]
 }
 ```
+
+Swarm plugin settings belong in `~/.config/opencode/opencode-swarm.json` (global) or `.opencode/opencode-swarm.json` (project override).
 
 ---
 
@@ -596,7 +590,7 @@ const result = await pre_check_batch({
 
 ### Configuration
 
-Enable/disable parallel pre-check via `.opencode/swarm.json`:
+Enable/disable parallel pre-check via `.opencode/opencode-swarm.json`:
 
 ```json
 {
@@ -712,7 +706,7 @@ All v6.9.0 quality tools run locally without:
 Optional enhancement: Semgrep (if already on PATH)
 
 ### Configuration
-Configure gates in `.opencode/swarm.json`:
+Configure gates in `.opencode/opencode-swarm.json`:
 
 ```json
 {
