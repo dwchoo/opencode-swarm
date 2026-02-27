@@ -312,7 +312,7 @@ describe('adversarial security: canonical dispatch migration', () => {
 		});
 		expect(commands['swarm-status']).toEqual({
 			template: 'swarm-status $ARGUMENTS',
-			description: 'Swarm command (/swarm-status)',
+			description: 'Show current swarm plan status and active phase.',
 		});
 	});
 });

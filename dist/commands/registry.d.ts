@@ -17,6 +17,25 @@ export declare const SWARM_COMMAND_ORDER: readonly ["swarm-status", "swarm-plan"
 export type SwarmCommandKey = (typeof SWARM_COMMAND_ORDER)[number];
 export type SwarmCommandHandlerRef = typeof handleStatusCommand | typeof handlePlanCommand | typeof handleAgentsCommand | typeof handleHistoryCommand | typeof handleConfigCommand | typeof handleDoctorCommand | typeof handleEvidenceCommand | typeof handleEvidenceSummaryCommand | typeof handleArchiveCommand | typeof handleDiagnoseCommand | typeof handlePreflightCommand | typeof handleSyncPlanCommand | typeof handleBenchmarkCommand | typeof handleExportCommand | typeof handleResetCommand | typeof handleRetrieveCommand;
 export type SwarmCommandUsage = `/${SwarmCommandKey}`;
+export declare const SWARM_COMMAND_DESCRIPTION_MAP: {
+    readonly 'swarm-status': "Show current swarm plan status and active phase.";
+    readonly 'swarm-plan': "View or update the active swarm plan.";
+    readonly 'swarm-agents': "List available swarm agents and their roles.";
+    readonly 'swarm-history': "Show recent swarm execution history.";
+    readonly 'swarm-config': "Inspect effective swarm configuration values.";
+    readonly 'swarm-config-doctor': "Diagnose and optionally fix swarm config issues.";
+    readonly 'swarm-doctor': "Run diagnostic checks for swarm setup.";
+    readonly 'swarm-evidence': "Manage evidence files under .swarm/evidence.";
+    readonly 'swarm-evidence-summary': "Summarize evidence coverage for completed tasks.";
+    readonly 'swarm-archive': "Archive current swarm plan and context artifacts.";
+    readonly 'swarm-diagnose': "Run troubleshooting diagnostics for swarm behavior.";
+    readonly 'swarm-preflight': "Run preflight checks for current phase readiness.";
+    readonly 'swarm-sync-plan': "Sync plan artifacts between JSON and markdown formats.";
+    readonly 'swarm-benchmark': "Run benchmark scenarios for swarm operations.";
+    readonly 'swarm-export': "Export current swarm state for backup.";
+    readonly 'swarm-reset': "Reset swarm state after explicit confirmation.";
+    readonly 'swarm-retrieve': "Retrieve full output for summarized tool results.";
+};
 export interface SwarmCommandRegistryEntry {
     handler: SwarmCommandHandlerRef;
     usage: SwarmCommandUsage;

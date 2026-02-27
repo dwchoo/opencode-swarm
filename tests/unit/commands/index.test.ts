@@ -4,7 +4,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { AgentDefinition } from '../../../src/agents';
 import { createSwarmCommandHandler } from '../../../src/commands/index';
-import { SWARM_COMMAND_ORDER, SWARM_COMMAND_REGISTRY } from '../../../src/commands/registry';
+import {
+	SWARM_COMMAND_DESCRIPTION_MAP,
+	SWARM_COMMAND_ORDER,
+	SWARM_COMMAND_REGISTRY,
+} from '../../../src/commands/registry';
 import OpenCodeSwarm from '../../../src/index';
 
 const LEGACY_REMOVAL_HEADER =
@@ -402,7 +406,10 @@ describe('canonical dispatch migration verification', () => {
 		expect(commandConfig.swarm).toBeUndefined();
 
 		for (const key of SWARM_COMMAND_ORDER) {
-			expect(commandConfig[key]).toBeDefined();
+			expect(commandConfig[key]).toEqual({
+				template: `${key} $ARGUMENTS`,
+				description: SWARM_COMMAND_DESCRIPTION_MAP[key],
+			});
 		}
 	});
 
@@ -445,7 +452,7 @@ describe('canonical dispatch migration verification', () => {
 		});
 		expect(commandConfig['swarm-status']).toEqual({
 			template: 'swarm-status $ARGUMENTS',
-			description: 'Swarm command (/swarm-status)',
+			description: SWARM_COMMAND_DESCRIPTION_MAP['swarm-status'],
 		});
 		expect(agentConfig.legacy).toBe(legacyAgent);
 		expect(agentConfig.architect).not.toBe(legacyAgent);
@@ -472,7 +479,7 @@ describe('canonical dispatch migration verification', () => {
 		for (const key of SWARM_COMMAND_ORDER) {
 			expect(commandConfig[key]).toEqual({
 				template: `${key} $ARGUMENTS`,
-				description: `Swarm command (${SWARM_COMMAND_REGISTRY[key].usage})`,
+				description: SWARM_COMMAND_DESCRIPTION_MAP[key],
 			});
 		}
 	});
@@ -497,11 +504,11 @@ describe('canonical dispatch migration verification', () => {
 		const commandConfig = opencodeConfig.command as Record<string, unknown>;
 		expect(commandConfig['swarm-status']).toEqual({
 			template: 'swarm-status $ARGUMENTS',
-			description: 'Swarm command (/swarm-status)',
+			description: SWARM_COMMAND_DESCRIPTION_MAP['swarm-status'],
 		});
 		expect(commandConfig['swarm-plan']).toEqual({
 			template: 'swarm-plan $ARGUMENTS',
-			description: 'Swarm command (/swarm-plan)',
+			description: SWARM_COMMAND_DESCRIPTION_MAP['swarm-plan'],
 		});
 	});
 

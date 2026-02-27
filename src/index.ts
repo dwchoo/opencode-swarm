@@ -10,8 +10,8 @@ import {
 } from './background';
 import { createSwarmCommandHandler } from './commands';
 import {
+	SWARM_COMMAND_DESCRIPTION_MAP,
 	SWARM_COMMAND_ORDER,
-	SWARM_COMMAND_REGISTRY,
 } from './commands/registry';
 import { loadPluginConfigWithMeta } from './config';
 import { ORCHESTRATOR_NAME } from './config/constants';
@@ -324,11 +324,9 @@ const OpenCodeSwarm: Plugin = async (ctx) => {
 			const canonicalSwarmCommands = SWARM_COMMAND_ORDER.reduce<
 				Record<string, unknown>
 			>((acc, key) => {
-				const usage = SWARM_COMMAND_REGISTRY[key].usage;
-				const commandKey = usage.replace(/^\//, '');
-				acc[commandKey] = {
-					template: `${commandKey} $ARGUMENTS`,
-					description: `Swarm command (${usage})`,
+				acc[key] = {
+					template: `${key} $ARGUMENTS`,
+					description: SWARM_COMMAND_DESCRIPTION_MAP[key],
 				};
 				return acc;
 			}, {});

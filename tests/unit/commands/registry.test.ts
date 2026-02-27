@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
 	LEGACY_SWARM_PHRASE_TO_CANONICAL_MESSAGE_ONLY,
 	normalizeLegacySwarmPhraseForLookup,
+	SWARM_COMMAND_DESCRIPTION_MAP,
 	SWARM_COMMAND_HANDLER_MAP,
 	SWARM_COMMAND_LIST,
 	SWARM_COMMAND_ORDER,
@@ -31,6 +32,25 @@ describe('commands registry task 1.2 verification', () => {
 			'swarm-retrieve',
 		]);
 		expect(SWARM_COMMAND_ORDER).not.toContain('swarm');
+		expect(new Set(SWARM_COMMAND_ORDER).size).toBe(SWARM_COMMAND_ORDER.length);
+	});
+
+	test('enforces usage invariant of `/${key}` for all canonical keys', () => {
+		for (const key of SWARM_COMMAND_ORDER) {
+			expect(SWARM_COMMAND_REGISTRY[key].usage).toBe(`/${key}`);
+		}
+	});
+
+	test('provides non-empty canonical descriptions for all command keys', () => {
+		expect(Object.keys(SWARM_COMMAND_DESCRIPTION_MAP)).toHaveLength(
+			SWARM_COMMAND_ORDER.length,
+		);
+
+		for (const key of SWARM_COMMAND_ORDER) {
+			const description = SWARM_COMMAND_DESCRIPTION_MAP[key];
+			expect(description).toBeTypeOf('string');
+			expect(description.trim().length).toBeGreaterThan(0);
+		}
 	});
 
 	test('registry is complete for all canonical command keys', () => {
@@ -43,7 +63,6 @@ describe('commands registry task 1.2 verification', () => {
 		for (const key of SWARM_COMMAND_ORDER) {
 			const entry = SWARM_COMMAND_REGISTRY[key];
 			expect(entry).toBeDefined();
-			expect(entry.usage).toBe(`/${key}`);
 			expect(entry.handler).toBeTypeOf('function');
 			expect(entry.legacyRewriteHint).toContain(`/${key}`);
 		}

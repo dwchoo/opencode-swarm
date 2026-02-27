@@ -59,6 +59,26 @@ export type SwarmCommandHandlerRef =
 
 export type SwarmCommandUsage = `/${SwarmCommandKey}`;
 
+export const SWARM_COMMAND_DESCRIPTION_MAP = {
+	'swarm-status': 'Show current swarm plan status and active phase.',
+	'swarm-plan': 'View or update the active swarm plan.',
+	'swarm-agents': 'List available swarm agents and their roles.',
+	'swarm-history': 'Show recent swarm execution history.',
+	'swarm-config': 'Inspect effective swarm configuration values.',
+	'swarm-config-doctor': 'Diagnose and optionally fix swarm config issues.',
+	'swarm-doctor': 'Run diagnostic checks for swarm setup.',
+	'swarm-evidence': 'Manage evidence files under .swarm/evidence.',
+	'swarm-evidence-summary': 'Summarize evidence coverage for completed tasks.',
+	'swarm-archive': 'Archive current swarm plan and context artifacts.',
+	'swarm-diagnose': 'Run troubleshooting diagnostics for swarm behavior.',
+	'swarm-preflight': 'Run preflight checks for current phase readiness.',
+	'swarm-sync-plan': 'Sync plan artifacts between JSON and markdown formats.',
+	'swarm-benchmark': 'Run benchmark scenarios for swarm operations.',
+	'swarm-export': 'Export current swarm state for backup.',
+	'swarm-reset': 'Reset swarm state after explicit confirmation.',
+	'swarm-retrieve': 'Retrieve full output for summarized tool results.',
+} as const satisfies Record<SwarmCommandKey, string>;
+
 export interface SwarmCommandRegistryEntry {
 	handler: SwarmCommandHandlerRef;
 	usage: SwarmCommandUsage;
