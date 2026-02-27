@@ -4,6 +4,7 @@
  * Returns unified result with gates_passed status
  */
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { tool } from '@opencode-ai/plugin';
 import pLimit from 'p-limit';
@@ -68,6 +69,34 @@ export interface PreCheckBatchResult {
 /**
  * Validate path to prevent traversal attacks
  */
+function getCanonicalPath(inputPath: string): string {
+	const absolutePath = path.resolve(inputPath);
+
+	try {
+		return fs.realpathSync.native(absolutePath);
+	} catch {
+		// Path may not exist yet. Resolve as much of the path as possible so
+		// symlinked prefixes (e.g. /var -> /private/var on macOS) are normalized.
+		let currentPath = absolutePath;
+		const unresolvedParts: string[] = [];
+
+		while (true) {
+			try {
+				const resolvedExistingPath = fs.realpathSync.native(currentPath);
+				return path.join(resolvedExistingPath, ...unresolvedParts.reverse());
+			} catch {
+				const parentPath = path.dirname(currentPath);
+				if (parentPath === currentPath) {
+					return absolutePath;
+				}
+
+				unresolvedParts.push(path.basename(currentPath));
+				currentPath = parentPath;
+			}
+		}
+	}
+}
+
 function validatePath(inputPath: string, baseDir: string): string | null {
 	if (!inputPath || inputPath.length === 0) {
 		return 'path is required';
@@ -76,10 +105,14 @@ function validatePath(inputPath: string, baseDir: string): string | null {
 	// Resolve to absolute path
 	const resolved = path.resolve(baseDir, inputPath);
 	const baseResolved = path.resolve(baseDir);
+	const canonicalResolved = getCanonicalPath(resolved);
+	const canonicalBaseResolved = getCanonicalPath(baseResolved);
 
 	// Ensure the resolved path is within base directory
-	const relative = path.relative(baseResolved, resolved);
-	if (relative.startsWith('..') || path.isAbsolute(relative)) {
+	const relative = path.relative(canonicalBaseResolved, canonicalResolved);
+	const isParentTraversal =
+		relative === '..' || relative.startsWith(`..${path.sep}`);
+	if (isParentTraversal || path.isAbsolute(relative)) {
 		return 'path traversal detected';
 	}
 
@@ -305,11 +338,9 @@ export async function runPreCheckBatch(
 		changedFiles = [];
 	}
 
-	// Early return if no files provided - skip SAST and quality_budget
+	// Early return when files is undefined - skip all tools
 	if (changedFiles.length === 0 && !files) {
-		warn(
-			'pre_check_batch: No files provided, skipping SAST and quality_budget',
-		);
+		warn('pre_check_batch: No files provided, skipping all tools');
 		return {
 			gates_passed: true,
 			lint: { ran: false, error: 'No files provided', duration_ms: 0 },
@@ -333,6 +364,7 @@ export async function runPreCheckBatch(
 
 	// Run all tools in parallel with concurrency limit
 	const limit = pLimit(MAX_CONCURRENT);
+	const batchStart = process.hrtime.bigint();
 
 	const [lintResult, secretscanResult, sastScanResult, qualityBudgetResult] =
 		await Promise.all([
@@ -344,16 +376,13 @@ export async function runPreCheckBatch(
 			limit(() => runQualityBudgetWrapped(changedFiles, directory, config)),
 		]);
 
-	// Calculate total duration
+	// Calculate wall-clock duration for the whole batch
 	const totalDuration =
-		lintResult.duration_ms +
-		secretscanResult.duration_ms +
-		sastScanResult.duration_ms +
-		qualityBudgetResult.duration_ms;
+		Number(process.hrtime.bigint() - batchStart) / 1_000_000;
 
 	// Determine gates_passed:
-	// - All tools are HARD GATES - must pass for gates_passed=true
-	// - Security tools (secretscan, sast_scan) and quality tools (lint, quality_budget) all block
+	// - lint, secretscan, and sast_scan are HARD GATES
+	// - quality_budget is a SOFT GATE and does not flip gates_passed
 	let gatesPassed = true;
 
 	// Check lint (hard gate)
@@ -398,6 +427,17 @@ export async function runPreCheckBatch(
 		);
 	}
 
+	// Check quality budget (soft gate)
+	if (qualityBudgetResult.ran && qualityBudgetResult.result) {
+		if (qualityBudgetResult.result.verdict === 'fail') {
+			warn('pre_check_batch: Quality budget violations detected - SOFT GATE');
+		}
+	} else if (qualityBudgetResult.error) {
+		warn(
+			`pre_check_batch: Quality budget error - SOFT GATE: ${qualityBudgetResult.error}`,
+		);
+	}
+
 	// Build result
 	const result: PreCheckBatchResult = {
 		gates_passed: gatesPassed,
@@ -425,7 +465,7 @@ export async function runPreCheckBatch(
  */
 export const pre_check_batch: ReturnType<typeof tool> = tool({
 	description:
-		'Run multiple verification tools in parallel: lint, secretscan, SAST scan, and quality budget. Returns unified result with gates_passed status. Security tools (secretscan, sast_scan) are HARD GATES - failures block merging.',
+		'Run multiple verification tools in parallel: lint, secretscan, SAST scan, and quality budget. Returns unified result with gates_passed status. lint/secretscan/sast_scan are HARD GATES; quality_budget is a SOFT GATE.',
 	args: {
 		files: tool.schema
 			.array(tool.schema.string())

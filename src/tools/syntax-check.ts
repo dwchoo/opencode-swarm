@@ -4,11 +4,7 @@ import * as path from 'node:path';
 import type { PluginConfig } from '../config';
 import type { EvidenceVerdict } from '../config/evidence-schema';
 import { saveEvidence } from '../evidence/manager';
-import {
-	getLanguageForExtension,
-	getParserForFile,
-	isSupportedFile,
-} from '../lang/registry';
+import { getLanguageForExtension, getParserForFile } from '../lang/registry';
 import type { Parser } from '../lang/runtime';
 
 export interface SyntaxCheckInput {
@@ -48,13 +44,28 @@ const BINARY_NULL_THRESHOLD = 0.1; // 10% null bytes
  */
 function isBinaryContent(content: string): boolean {
 	const sample = content.slice(0, BINARY_CHECK_BYTES);
+	if (sample.length === 0) {
+		return false;
+	}
+
 	let nullCount = 0;
 	for (let i = 0; i < sample.length; i++) {
 		if (sample.charCodeAt(i) === 0) {
 			nullCount++;
 		}
 	}
-	return nullCount / sample.length > BINARY_NULL_THRESHOLD;
+	return nullCount / BINARY_CHECK_BYTES > BINARY_NULL_THRESHOLD;
+}
+
+/**
+ * Check if target path is inside base path
+ */
+function isPathInside(basePath: string, targetPath: string): boolean {
+	const relative = path.relative(basePath, targetPath);
+	return (
+		relative === '' ||
+		(!relative.startsWith('..') && !path.isAbsolute(relative))
+	);
 }
 
 /**
@@ -74,7 +85,7 @@ function extractSyntaxErrors(
 
 	// Walk the tree to find ERROR nodes
 	function walkNode(node: any) {
-		if (node.type === 'ERROR') {
+		if (node.type === 'ERROR' || node.isMissing === true) {
 			errors.push({
 				line: node.startPosition.row + 1, // 1-indexed
 				column: node.startPosition.column,
@@ -87,6 +98,13 @@ function extractSyntaxErrors(
 	}
 
 	walkNode(tree.rootNode);
+	if (errors.length === 0 && tree.rootNode.hasError === true) {
+		errors.push({
+			line: 1,
+			column: 0,
+			message: 'Syntax error',
+		});
+	}
 	tree.delete();
 
 	return errors;
@@ -121,15 +139,22 @@ export async function syntaxCheck(
 		filesToCheck = filesToCheck.filter((f) => f.additions > 0);
 	}
 
-	// Filter to supported extensions
-	filesToCheck = filesToCheck.filter((f) => isSupportedFile(f.path));
-
 	// Optional: filter by language
 	if (languages?.length) {
+		const normalizedLanguages = new Set(languages.map((l) => l.toLowerCase()));
 		filesToCheck = filesToCheck.filter((file) =>
-			languages.some((lang) =>
-				file.path.toLowerCase().includes(lang.toLowerCase()),
-			),
+			(() => {
+				const lowerPath = file.path.toLowerCase();
+				const ext = path.extname(file.path).toLowerCase();
+				const languageId = getLanguageForExtension(ext)?.id.toLowerCase();
+
+				return Array.from(normalizedLanguages).some((lang) => {
+					if (languageId && languageId === lang) {
+						return true;
+					}
+					return lowerPath.includes(lang);
+				});
+			})(),
 		);
 	}
 
@@ -138,11 +163,20 @@ export async function syntaxCheck(
 	let filesFailed = 0;
 	let skippedCount = 0;
 
+	const resolvedDirectory = path.resolve(directory);
+	const canonicalDirectory = (() => {
+		try {
+			return fs.realpathSync(resolvedDirectory);
+		} catch {
+			return resolvedDirectory;
+		}
+	})();
+
 	for (const fileInfo of filesToCheck) {
 		const { path: filePath } = fileInfo;
-		const fullPath = path.isAbsolute(filePath)
-			? filePath
-			: path.join(directory, filePath);
+		const resolvedPath = path.isAbsolute(filePath)
+			? path.resolve(filePath)
+			: path.resolve(directory, filePath);
 
 		const result: SyntaxCheckFileResult = {
 			path: filePath,
@@ -152,11 +186,54 @@ export async function syntaxCheck(
 		};
 
 		try {
-			// Get parser for file
-			const parser = await getParserForFile(filePath);
+			if (!isPathInside(resolvedDirectory, resolvedPath)) {
+				result.skipped_reason = 'path_outside_directory';
+				skippedCount++;
+				filesFailed++;
+				results.push(result);
+				continue;
+			}
 
-			if (!parser) {
-				result.skipped_reason = 'unsupported_language';
+			let canonicalPath: string;
+			try {
+				canonicalPath = fs.realpathSync(resolvedPath);
+			} catch {
+				result.skipped_reason = 'file_read_error';
+				skippedCount++;
+				filesFailed++;
+				results.push(result);
+				continue;
+			}
+
+			if (!isPathInside(canonicalDirectory, canonicalPath)) {
+				result.skipped_reason = 'path_outside_directory';
+				skippedCount++;
+				filesFailed++;
+				results.push(result);
+				continue;
+			}
+
+			let stats: fs.Stats;
+			try {
+				stats = fs.statSync(canonicalPath);
+			} catch {
+				result.skipped_reason = 'file_read_error';
+				skippedCount++;
+				filesFailed++;
+				results.push(result);
+				continue;
+			}
+
+			if (!stats.isFile()) {
+				result.skipped_reason = 'file_read_error';
+				skippedCount++;
+				filesFailed++;
+				results.push(result);
+				continue;
+			}
+
+			if (stats.size > MAX_FILE_SIZE) {
+				result.skipped_reason = 'file_too_large';
 				skippedCount++;
 				results.push(result);
 				continue;
@@ -165,18 +242,11 @@ export async function syntaxCheck(
 			// Read file content
 			let content: string;
 			try {
-				content = fs.readFileSync(fullPath, 'utf8');
+				content = fs.readFileSync(canonicalPath, 'utf8');
 			} catch {
 				result.skipped_reason = 'file_read_error';
 				skippedCount++;
-				results.push(result);
-				continue;
-			}
-
-			// Check file size
-			if (content.length > MAX_FILE_SIZE) {
-				result.skipped_reason = 'file_too_large';
-				skippedCount++;
+				filesFailed++;
 				results.push(result);
 				continue;
 			}
@@ -184,6 +254,16 @@ export async function syntaxCheck(
 			// Check for binary content
 			if (isBinaryContent(content)) {
 				result.skipped_reason = 'binary_file';
+				skippedCount++;
+				results.push(result);
+				continue;
+			}
+
+			// Get parser for file after content checks
+			const parser = await getParserForFile(filePath);
+
+			if (!parser) {
+				result.skipped_reason = 'unsupported_language';
 				skippedCount++;
 				results.push(result);
 				continue;
@@ -208,6 +288,7 @@ export async function syntaxCheck(
 			result.skipped_reason =
 				error instanceof Error ? error.message : 'unknown_error';
 			skippedCount++;
+			filesFailed++;
 		}
 
 		results.push(result);
